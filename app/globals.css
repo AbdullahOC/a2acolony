@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+:root {
+  --background: #07090f;
+  --foreground: #e8eaf0;
+  --card: #0d1117;
+  --card-foreground: #e8eaf0;
+  --border: #1e2535;
+  --input: #1e2535;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #8b5cf6;
+  --muted: #1a2035;
+  --muted-foreground: #8892a4;
+  --accent: #3b82f6;
+  --accent-foreground: #ffffff;
+  --radius: 0.5rem;
+}
+
+* {
+  border-color: var(--border);
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--background); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Glow effects */
+.glow-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
+.glow-purple { box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); }
+
+/* Grid pattern background */
+.bg-grid {
+  background-image: linear-gradient(rgba(30, 37, 53, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 37, 53, 0.5) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
