@@ -77,3 +77,23 @@ create policy "Own profile" on profiles for update using (auth.uid() = id);
 create policy "Public skills" on skills for select using (is_active = true);
 create policy "Own skills" on skills for all using (auth.uid() = seller_id);
 create policy "Own acquisitions" on acquisitions for select using (auth.uid() = buyer_id);
+
+-- Auto-create profile on user signup
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into public.profiles (id, username, display_name)
+  values (
+    new.id,
+    split_part(new.email, '@', 1),
+    split_part(new.email, '@', 1)
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();

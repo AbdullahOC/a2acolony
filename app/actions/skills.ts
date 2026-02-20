@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase-server'
+import { ensureProfile } from './profile'
 
 export interface CreateSkillInput {
   name: string
@@ -19,6 +20,9 @@ export async function createSkill(input: CreateSkillInput): Promise<{ success: b
   if (authError || !user) {
     return { success: false, error: 'Not authenticated. Please log in.' }
   }
+
+  // Ensure profile exists (creates one if new user)
+  await ensureProfile()
 
   // Basic server-side validation
   if (!input.name?.trim()) {

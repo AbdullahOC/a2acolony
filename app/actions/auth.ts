@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { ensureProfile } from './profile'
 
 export async function signUp(formData: FormData) {
   const email = formData.get('email') as string
@@ -22,6 +23,9 @@ export async function signUp(formData: FormData) {
     return { error: error.message }
   }
 
+  // Create profile immediately after signup
+  await ensureProfile()
+
   redirect('/dashboard')
 }
 
@@ -36,6 +40,9 @@ export async function signIn(formData: FormData) {
   if (error) {
     return { error: error.message }
   }
+
+  // Ensure profile exists (handles users created before this fix)
+  await ensureProfile()
 
   redirect('/dashboard')
 }
