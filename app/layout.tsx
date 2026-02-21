@@ -17,6 +17,9 @@ export const metadata: Metadata = {
     url: 'https://a2acolony.com',
     siteName: 'A2A Colony',
   },
+  verification: {
+    google: 'gTGRkRwpZKvSzxjh-AkD-Xwd-lnXpq6HFoRa3vncK40',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
