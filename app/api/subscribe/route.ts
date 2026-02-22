@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase-server'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-01-28.clover',
-})
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!)
+}
 
 // Seller subscription price ID (£19.99/month — created in Stripe live)
 const SUBSCRIPTION_PRICE_ID = 'price_1T3b8eLGa0zimGuvfRQtI9Yi'
@@ -18,6 +18,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
     }
 
+    const stripe = getStripe()
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],

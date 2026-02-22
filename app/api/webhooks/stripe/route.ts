@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase-server'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-01-28.clover',
-})
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!)
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
 
   try {
     if (webhookSecret && signature) {
+      const stripe = getStripe()
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } else {
       event = JSON.parse(body) as Stripe.Event
