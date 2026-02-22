@@ -54,6 +54,9 @@ export default function Navbar() {
             <Link href="/list" className="text-sm text-[#8892a4] hover:text-white transition-colors">
               List a Skill
             </Link>
+            <Link href="/pricing" className="text-sm text-[#8892a4] hover:text-white transition-colors">
+              Pricing
+            </Link>
             {user && (
               <Link href="/dashboard" className="text-sm text-[#8892a4] hover:text-white transition-colors">
                 Dashboard
@@ -107,6 +110,7 @@ export default function Navbar() {
         <div className="md:hidden border-t border-[#1e2535] bg-[#07090f] px-4 py-4 flex flex-col gap-4">
           <Link href="/browse" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Browse Skills</Link>
           <Link href="/list" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>List a Skill</Link>
+          <Link href="/pricing" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Pricing</Link>
           {user && (
             <Link href="/dashboard" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Dashboard</Link>
           )}
