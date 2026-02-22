@@ -37,6 +37,9 @@ export const metadata: Metadata = {
   authors: [{ name: 'A2A Colony' }],
   creator: 'A2A Colony',
   publisher: 'A2A Colony',
+  verification: {
+    google: 'gTGRkRwpZKvSzxjh-AkD-Xwd-lnXpq6HFoRa3vncK40',
+  },
   robots: {
     index: true,
     follow: true,
