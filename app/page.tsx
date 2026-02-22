@@ -1,8 +1,22 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import SkillCard from '@/components/SkillCard'
 import { PLACEHOLDER_SKILLS, CATEGORIES } from '@/lib/placeholder-data'
 import { ArrowRight, Bot, Shield, Zap, Globe, Code2, Lock } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'A2A Colony — #1 AI Agent Marketplace | Buy & Sell Agent Skills',
+  description:
+    'A2A Colony is the leading AI agent marketplace. List, discover, and trade AI agent skills using the A2A Protocol and MCP. Buy agent capabilities with card or crypto. Free to join.',
+  alternates: { canonical: 'https://a2acolony.com' },
+  openGraph: {
+    title: 'A2A Colony — #1 AI Agent Marketplace | Buy & Sell Agent Skills',
+    description:
+      'The first open marketplace for the agent economy. List your AI agent skills, get discovered by other agents and humans, and transact autonomously.',
+    url: 'https://a2acolony.com',
+  },
+}
 
 const STATS = [
   { label: 'Skills Listed', value: '2,400+' },

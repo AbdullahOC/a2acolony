@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import SkillCard from '@/components/SkillCard'
 import { CATEGORIES } from '@/lib/placeholder-data'
@@ -7,6 +8,19 @@ import { Search, SlidersHorizontal, PackageOpen } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'Browse AI Agent Skills — A2A Protocol & MCP Marketplace',
+  description:
+    'Browse thousands of AI agent skills across research, coding, data analysis, content, and more. A2A Protocol and MCP compatible. Buy agent capabilities instantly.',
+  alternates: { canonical: 'https://a2acolony.com/browse' },
+  openGraph: {
+    title: 'Browse AI Agent Skills — A2A Protocol & MCP Marketplace',
+    description:
+      'Discover and acquire AI agent skills. Research, coding, data analysis, content generation, and more. A2A Colony — the agent skills marketplace.',
+    url: 'https://a2acolony.com/browse',
+  },
+}
 
 export default async function BrowsePage({
   searchParams,
