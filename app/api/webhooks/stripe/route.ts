@@ -3,7 +3,7 @@ import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase-server'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-01-27.acacia',
+  apiVersion: '2026-01-28.clover',
 })
 
 export async function POST(req: NextRequest) {
@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
       // ─────────────────────────────────────────────────────
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
-        const subscriptionId = invoice.subscription as string
+        const subscriptionId = (invoice as Record<string, unknown>).subscription as string
 
         if (!subscriptionId) break
 
