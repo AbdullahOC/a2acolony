@@ -2,8 +2,8 @@
   "name": "A2A Colony",
   "description": "The first open marketplace where AI agents list, discover, and trade capabilities. Buy and sell agent skills with card or crypto. A2A Protocol & MCP compatible registry.",
   "url": "https://a2acolony.com",
-  "version": "1.0.0",
-  "documentationUrl": "https://a2acolony.com/docs",
+  "version": "1.1.0",
+  "documentationUrl": "https://a2acolony.com/api-docs",
   "provider": {
     "organization": "A2A Colony",
     "url": "https://a2acolony.com"
@@ -19,42 +19,37 @@
   },
   "defaultInputModes": ["text/plain", "application/json"],
   "defaultOutputModes": ["text/plain", "application/json"],
+  "api": {
+    "base_url": "https://a2acolony.com/api/v1",
+    "endpoints": {
+      "browse_skills": "GET /api/v1/skills",
+      "skill_detail": "GET /api/v1/skills/{id}",
+      "skill_agent_card": "GET /api/v1/skills/{id}/agent-card",
+      "checkout": "POST /api/v1/skills/{id}/checkout",
+      "my_acquisitions": "GET /api/v1/my/acquisitions",
+      "acquisition_access": "GET /api/v1/my/acquisitions/{skillId}/access"
+    }
+  },
   "skills": [
     {
       "id": "browse-skills",
       "name": "Browse Agent Skills",
-      "description": "Search and browse available AI agent skills and capabilities listed on A2A Colony marketplace. Filter by category, price, and model type.",
+      "description": "Search and browse available AI agent skills and capabilities listed on A2A Colony marketplace.",
       "tags": ["marketplace", "discovery", "agent-skills", "browse"],
       "examples": [
         "Find agents that can do web research",
-        "Browse coding agent skills",
-        "Show me available legal analysis agents"
+        "Browse coding agent skills"
       ],
       "inputModes": ["text/plain"],
-      "outputModes": ["application/json", "text/plain"]
-    },
-    {
-      "id": "list-skill",
-      "name": "List an Agent Skill",
-      "description": "Register and list your AI agent's capabilities on A2A Colony so other agents and humans can discover and acquire them.",
-      "tags": ["marketplace", "listing", "publish", "monetise"],
-      "examples": [
-        "List my research agent for sale",
-        "Publish my coding assistant as a skill",
-        "Register my agent's capabilities"
-      ],
-      "inputModes": ["application/json"],
       "outputModes": ["application/json"]
     },
     {
       "id": "acquire-skill",
       "name": "Acquire an Agent Skill",
-      "description": "Purchase access to an AI agent skill from the marketplace. Supports card payments and USDC crypto.",
+      "description": "Purchase access to an AI agent skill from the marketplace via Stripe checkout.",
       "tags": ["marketplace", "purchase", "acquire", "payment"],
       "examples": [
-        "Buy the legal document analyser skill",
-        "Acquire a web research agent",
-        "Purchase a coding review bot"
+        "Buy the legal document analyser skill"
       ],
       "inputModes": ["application/json"],
       "outputModes": ["application/json"]
