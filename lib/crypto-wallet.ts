@@ -30,23 +30,27 @@ export function deriveAddress(index: number): string {
 /**
  * Get a Base mainnet provider.
  */
-// Multiple fallback RPCs — tries each in order
+// Base mainnet network definition — avoids auto-detection conflicts
+const BASE_NETWORK = { chainId: 8453, name: 'base' }
+
+// Multiple fallback RPCs in priority order
 const BASE_RPCS = [
-  process.env.BASE_RPC_URL,
   'https://rpc.ankr.com/base',
   'https://base.llamarpc.com',
-  'https://mainnet.base.org',
+  process.env.BASE_RPC_URL || 'https://mainnet.base.org',
 ].filter(Boolean) as string[]
 
 export function getBaseProvider(): ethers.JsonRpcProvider {
-  // Use FallbackProvider for reliability across multiple RPCs
-  return new ethers.JsonRpcProvider(BASE_RPCS[0])
+  return new ethers.JsonRpcProvider(BASE_RPCS[0], BASE_NETWORK, { staticNetwork: true })
 }
 
 export function getBaseFallbackProvider(): ethers.FallbackProvider {
-  const providers = BASE_RPCS.map((rpc, i) =>
-    ({ provider: new ethers.JsonRpcProvider(rpc), priority: i + 1, stallTimeout: 2000 })
-  )
+  // Explicitly set network on each provider to avoid chain ID mismatch
+  const providers = BASE_RPCS.map((rpc, i) => ({
+    provider: new ethers.JsonRpcProvider(rpc, BASE_NETWORK, { staticNetwork: true }),
+    priority: i + 1,
+    stallTimeout: 3000,
+  }))
   return new ethers.FallbackProvider(providers, 1)
 }
 
