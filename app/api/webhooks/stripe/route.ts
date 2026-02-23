@@ -113,10 +113,15 @@ export async function POST(req: NextRequest) {
           p_amount: sellerPayout,
         })
 
-        // Increment skill acquisition count
+        // Increment skill acquisition count (read-then-write, safe for webhook context)
+        const { data: current } = await supabase
+          .from('skills')
+          .select('total_acquisitions')
+          .eq('id', skillId)
+          .single()
         await supabase
           .from('skills')
-          .update({ total_acquisitions: skill.price_gbp })
+          .update({ total_acquisitions: (current?.total_acquisitions ?? 0) + 1 })
           .eq('id', skillId)
 
         console.log(`[webhook] Skill sale: skill=${skillId} seller=${skill.seller_id} gross=£${grossAmount} payout=£${sellerPayout} rate=${commissionRate}%`)
