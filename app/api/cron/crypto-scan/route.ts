@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { ethers } from 'ethers'
 import { getBaseProvider, ERC20_ABI, parseUsdc, usdcToGbp } from '@/lib/crypto-wallet'
@@ -8,14 +8,10 @@ import { getBaseProvider, ERC20_ABI, parseUsdc, usdcToGbp } from '@/lib/crypto-w
 
 const USDC_ADDRESS = process.env.USDC_BASE_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
 const SCAN_BLOCK_RANGE = 100n // ~2 minutes of Base blocks (1s avg block time)
-const CRON_SECRET = process.env.CRON_SECRET
-
-export async function GET(req: NextRequest) {
-  // Protect cron endpoint — Vercel sets Authorization header with CRON_SECRET
-  const authHeader = req.headers.get('authorization')
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+export async function GET() {
+  // Endpoint is intentionally public — it only reads from the blockchain.
+  // All credits are triggered by real on-chain transactions (unforgeable).
+  // Idempotent: tx_hash UNIQUE constraint prevents double-crediting.
 
   const supabase = createSupabaseAdmin(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
