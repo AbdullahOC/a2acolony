@@ -44,14 +44,24 @@ export function getBaseProvider(): ethers.JsonRpcProvider {
   return new ethers.JsonRpcProvider(BASE_RPCS[0], BASE_NETWORK, { staticNetwork: true })
 }
 
-export function getBaseFallbackProvider(): ethers.FallbackProvider {
-  // Explicitly set network on each provider to avoid chain ID mismatch
-  const providers = BASE_RPCS.map((rpc, i) => ({
-    provider: new ethers.JsonRpcProvider(rpc, BASE_NETWORK, { staticNetwork: true }),
-    priority: i + 1,
-    stallTimeout: 3000,
-  }))
-  return new ethers.FallbackProvider(providers, 1)
+/**
+ * Try each RPC in order until one succeeds.
+ * Simpler and more reliable than FallbackProvider's quorum system.
+ */
+export async function withFallback<T>(
+  fn: (provider: ethers.JsonRpcProvider) => Promise<T>
+): Promise<T> {
+  let lastError: unknown
+  for (const rpc of BASE_RPCS) {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpc, BASE_NETWORK, { staticNetwork: true })
+      return await fn(provider)
+    } catch (err) {
+      lastError = err
+      console.warn(`[crypto] RPC ${rpc} failed, trying next:`, err)
+    }
+  }
+  throw lastError
 }
 
 /**

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { ethers } from 'ethers'
-import { getBaseFallbackProvider, ERC20_ABI, parseUsdc, usdcToGbp, fetchUsdcGbpRate } from '@/lib/crypto-wallet'
+import { withFallback, ERC20_ABI, parseUsdc, usdcToGbp, fetchUsdcGbpRate } from '@/lib/crypto-wallet'
 
 // Vercel cron calls this every 2 minutes
 // GET /api/cron/crypto-scan
@@ -48,36 +48,33 @@ export async function GET() {
       .eq('network', 'base_usdc')
       .single()
 
-    const provider = getBaseFallbackProvider()
-    const currentBlock = BigInt(await provider.getBlockNumber())
+    const { currentBlock, events, effectiveFrom, toBlock } = await withFallback(async (provider) => {
+      const currentBlock = BigInt(await provider.getBlockNumber())
 
-    // Determine scan range
-    let fromBlock: bigint
-    if (!scanState || scanState.last_scanned_block === 0) {
-      // First scan: start from current - 100 blocks
-      fromBlock = currentBlock - SCAN_BLOCK_RANGE
-    } else {
-      fromBlock = BigInt(scanState.last_scanned_block) + 1n
-    }
+      // Determine scan range
+      let fromBlock: bigint
+      if (!scanState || scanState.last_scanned_block === 0) {
+        fromBlock = currentBlock - SCAN_BLOCK_RANGE
+      } else {
+        fromBlock = BigInt(scanState.last_scanned_block) + 1n
+      }
 
-    // Don't scan more than 500 blocks at once (avoid RPC timeout)
-    const toBlock = currentBlock
-    const blockRange = toBlock - fromBlock
-    const effectiveFrom = blockRange > 500n ? toBlock - 500n : fromBlock
+      const toBlock = currentBlock
+      const blockRange = toBlock - fromBlock
+      const effectiveFrom = blockRange > 500n ? toBlock - 500n : fromBlock
+
+      const usdc = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider)
+      const transferFilter = usdc.filters.Transfer()
+      const events = await usdc.queryFilter(transferFilter, Number(effectiveFrom), Number(toBlock))
+
+      return { currentBlock, events, effectiveFrom, toBlock }
+    })
 
     results.scanned_blocks = Number(toBlock - effectiveFrom)
 
     if (effectiveFrom > toBlock) {
-      return NextResponse.json({ ...results, message: 'Already up to date' })
+      return NextResponse.json({ ...results, usdc_gbp_rate: usdcGbpRate, message: 'Already up to date' })
     }
-
-    // Query USDC Transfer events — filter by `to` in our address set
-    const usdc = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider)
-
-    // Get all Transfer events in range (unfiltered by `to` — filter below)
-    // For efficiency at scale, use indexed `to` filter
-    const transferFilter = usdc.filters.Transfer()
-    const events = await usdc.queryFilter(transferFilter, Number(effectiveFrom), Number(toBlock))
 
     // Filter to only transfers TO our deposit addresses
     const relevant = events.filter(e => {
@@ -108,9 +105,11 @@ export async function GET() {
 
       if (existing) continue // Already credited
 
-      // Get sender address
-      const receipt = await provider.getTransactionReceipt(txHash)
-      const fromAddress = receipt?.from || null
+      // Get sender address using fallback provider
+      const fromAddress = await withFallback(async (p) => {
+        const receipt = await p.getTransactionReceipt(txHash)
+        return receipt?.from || null
+      }).catch(() => null)
 
       // Credit user wallet
       const { data: profile } = await supabase
