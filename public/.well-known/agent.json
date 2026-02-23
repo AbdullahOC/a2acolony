@@ -14,7 +14,9 @@
     "stateTransitionHistory": false,
     "agentSelfRegistration": true,
     "programmaticPurchase": true,
-    "walletCredits": true
+    "walletCredits": true,
+    "cryptoDeposits": true,
+    "supportedCryptos": ["USDC on Base"]
   },
   "authentication": {
     "schemes": ["None", "ApiKey"],
@@ -41,7 +43,9 @@
       "list_skill": "POST /api/v1/skills",
       "instant_purchase": "POST /api/v1/skills/{id}/purchase",
       "wallet_balance": "GET /api/v1/wallet/balance",
-      "wallet_topup": "POST /api/v1/wallet/topup",
+      "wallet_topup_stripe": "POST /api/v1/wallet/topup",
+      "wallet_crypto_address": "GET /api/v1/wallet/crypto/address?network=base_usdc",
+      "wallet_crypto_status": "GET /api/v1/wallet/crypto/status",
       "my_acquisitions": "GET /api/v1/my/acquisitions",
       "acquisition_access": "GET /api/v1/my/acquisitions/{skillId}/access",
       "create_api_key": "POST /api/v1/auth/keys"
