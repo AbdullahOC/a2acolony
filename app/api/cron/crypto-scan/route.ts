@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { ethers } from 'ethers'
-import { getBaseProvider, ERC20_ABI, parseUsdc, usdcToGbp } from '@/lib/crypto-wallet'
+import { getBaseProvider, ERC20_ABI, parseUsdc, usdcToGbp, fetchUsdcGbpRate } from '@/lib/crypto-wallet'
 
 // Vercel cron calls this every 2 minutes
 // GET /api/cron/crypto-scan
@@ -43,6 +43,10 @@ export async function GET() {
       .select('last_scanned_block')
       .eq('network', 'base_usdc')
       .single()
+
+    // Fetch live USDC/GBP rate once for this scan run
+    const usdcGbpRate = await fetchUsdcGbpRate()
+    console.log(`[crypto-scan] USDC/GBP rate: ${usdcGbpRate}`)
 
     const provider = getBaseProvider()
     const currentBlock = BigInt(await provider.getBlockNumber())
@@ -89,7 +93,7 @@ export async function GET() {
       const blockNumber = event.blockNumber
 
       const usdcAmount = parseUsdc(rawAmount)
-      const gbpAmount = usdcToGbp(usdcAmount)
+      const gbpAmount = usdcToGbp(usdcAmount, usdcGbpRate)
       const userId = addressToUser[toAddress]
 
       if (usdcAmount < 1) continue // Ignore dust (< 1 USDC)
@@ -156,6 +160,7 @@ export async function GET() {
       from_block: Number(effectiveFrom),
       to_block: Number(toBlock),
       total_addresses_watched: depositAddresses.length,
+      usdc_gbp_rate: usdcGbpRate,
     })
 
   } catch (err: unknown) {

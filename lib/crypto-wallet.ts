@@ -43,11 +43,29 @@ export function parseUsdc(raw: bigint): number {
 }
 
 /**
- * Convert USDC amount to GBP.
- * For now: 1 USDC ≈ 1 USD ≈ 0.79 GBP (approximate, update periodically).
- * TODO: Fetch live rate from a price feed.
+ * Fetch live USDC → GBP rate from CoinGecko (free, no API key).
+ * Falls back to 0.79 if the request fails.
  */
-export function usdcToGbp(usdcAmount: number): number {
-  const USDC_TO_GBP = 0.79
-  return parseFloat((usdcAmount * USDC_TO_GBP).toFixed(2))
+export async function fetchUsdcGbpRate(): Promise<number> {
+  try {
+    const res = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=gbp',
+      { next: { revalidate: 0 } }
+    )
+    if (!res.ok) throw new Error(`CoinGecko ${res.status}`)
+    const data = await res.json() as { 'usd-coin': { gbp: number } }
+    const rate = data['usd-coin']?.gbp
+    if (!rate || rate < 0.5 || rate > 1.5) throw new Error('Rate out of range')
+    return rate
+  } catch (err) {
+    console.warn('[crypto] CoinGecko rate fetch failed, using fallback 0.79:', err)
+    return 0.79
+  }
+}
+
+/**
+ * Convert USDC amount to GBP using a pre-fetched rate.
+ */
+export function usdcToGbp(usdcAmount: number, rate: number = 0.79): number {
+  return parseFloat((usdcAmount * rate).toFixed(2))
 }
