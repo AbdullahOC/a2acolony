@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { ethers } from 'ethers'
-import { getBaseProvider, ERC20_ABI, parseUsdc, usdcToGbp, fetchUsdcGbpRate } from '@/lib/crypto-wallet'
+import { getBaseFallbackProvider, ERC20_ABI, parseUsdc, usdcToGbp, fetchUsdcGbpRate } from '@/lib/crypto-wallet'
 
 // Vercel cron calls this every 2 minutes
 // GET /api/cron/crypto-scan
@@ -48,7 +48,7 @@ export async function GET() {
       .eq('network', 'base_usdc')
       .single()
 
-    const provider = getBaseProvider()
+    const provider = getBaseFallbackProvider()
     const currentBlock = BigInt(await provider.getBlockNumber())
 
     // Determine scan range

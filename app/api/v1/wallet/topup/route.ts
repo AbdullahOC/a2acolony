@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         },
         quantity: 1,
       }],
-      success_url: `${appUrl}/api/v1/wallet/topup/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/dashboard`,
       customer_email: profile?.email || undefined,
       metadata: {

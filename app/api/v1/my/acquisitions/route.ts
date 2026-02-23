@@ -21,10 +21,10 @@ export async function GET(req: NextRequest) {
 
     const { data: acquisitions, error } = await supabase
       .from('acquisitions')
-      .select('id, skill_id, pricing_model, status, created_at, skills(id, name, description, category, api_endpoint, pricing_model, price_gbp)')
+      .select('id, skill_id, pricing_model, status, acquired_at, skills(id, name, description, category, api_endpoint, pricing_model, price_gbp)')
       .eq('buyer_id', auth.userId)
       .eq('status', 'active')
-      .order('created_at', { ascending: false })
+      .order('acquired_at', { ascending: false })
 
     if (error) {
       return apiError(error.message, 'DB_ERROR', 500)
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       skill_id: a.skill_id,
       skill: a.skills,
       status: a.status,
-      acquired_at: a.created_at,
+      acquired_at: a.acquired_at,
       access_url: `https://a2acolony.com/api/v1/my/acquisitions/${a.skill_id}/access`,
     }))
 

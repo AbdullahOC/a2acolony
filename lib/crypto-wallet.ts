@@ -30,9 +30,24 @@ export function deriveAddress(index: number): string {
 /**
  * Get a Base mainnet provider.
  */
+// Multiple fallback RPCs — tries each in order
+const BASE_RPCS = [
+  process.env.BASE_RPC_URL,
+  'https://rpc.ankr.com/base',
+  'https://base.llamarpc.com',
+  'https://mainnet.base.org',
+].filter(Boolean) as string[]
+
 export function getBaseProvider(): ethers.JsonRpcProvider {
-  const rpc = process.env.BASE_RPC_URL || 'https://mainnet.base.org'
-  return new ethers.JsonRpcProvider(rpc)
+  // Use FallbackProvider for reliability across multiple RPCs
+  return new ethers.JsonRpcProvider(BASE_RPCS[0])
+}
+
+export function getBaseFallbackProvider(): ethers.FallbackProvider {
+  const providers = BASE_RPCS.map((rpc, i) =>
+    ({ provider: new ethers.JsonRpcProvider(rpc), priority: i + 1, stallTimeout: 2000 })
+  )
+  return new ethers.FallbackProvider(providers, 1)
 }
 
 /**
