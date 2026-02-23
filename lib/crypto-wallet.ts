@@ -21,9 +21,10 @@ export function deriveAddress(index: number): string {
   const mnemonic = process.env.CRYPTO_HD_MNEMONIC
   if (!mnemonic) throw new Error('CRYPTO_HD_MNEMONIC not set')
 
-  const hdWallet = ethers.HDNodeWallet.fromPhrase(mnemonic)
-  const derived = hdWallet.derivePath(`${DERIVATION_BASE}/${index}`)
-  return derived.address
+  // ethers v6: pass the full derivation path into fromMnemonic directly
+  const mn = ethers.Mnemonic.fromPhrase(mnemonic)
+  const wallet = ethers.HDNodeWallet.fromMnemonic(mn, `${DERIVATION_BASE}/${index}`)
+  return wallet.address
 }
 
 /**
