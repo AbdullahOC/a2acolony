@@ -37,6 +37,39 @@ export async function POST(req: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
 
+        // ── Wallet top-up ──
+        if (session.metadata?.type === 'wallet_topup') {
+          const userId = session.metadata.userId
+          const amountGbp = parseFloat(session.metadata.amount_gbp)
+
+          if (!userId || isNaN(amountGbp)) {
+            console.error('[webhook] Invalid wallet_topup metadata:', session.id)
+            break
+          }
+
+          // Credit the user's wallet
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('credits_gbp')
+            .eq('id', userId)
+            .single()
+
+          const currentBalance = parseFloat(profile?.credits_gbp ?? '0') || 0
+          await supabase
+            .from('profiles')
+            .update({ credits_gbp: currentBalance + amountGbp })
+            .eq('id', userId)
+
+          // Mark topup as completed
+          await supabase
+            .from('wallet_topups')
+            .update({ status: 'completed', stripe_payment_intent_id: session.payment_intent as string })
+            .eq('stripe_session_id', session.id)
+
+          console.log(`[webhook] Wallet topped up: user=${userId} amount=£${amountGbp} new_balance=£${currentBalance + amountGbp}`)
+          break
+        }
+
         // Only handle skill purchases (not subscription checkouts)
         if (session.mode === 'subscription') break
 
