@@ -28,8 +28,12 @@ export async function GET() {
       .eq('network', 'base_usdc')
 
     if (addrError) throw new Error(`Failed to fetch deposit addresses: ${addrError.message}`)
+    // Fetch live USDC/GBP rate once for this scan run
+    const usdcGbpRate = await fetchUsdcGbpRate()
+    console.log(`[crypto-scan] USDC/GBP rate: ${usdcGbpRate}`)
+
     if (!depositAddresses || depositAddresses.length === 0) {
-      return NextResponse.json({ ...results, message: 'No deposit addresses yet' })
+      return NextResponse.json({ ...results, usdc_gbp_rate: usdcGbpRate, message: 'No deposit addresses yet' })
     }
 
     const addressSet = new Set(depositAddresses.map(a => a.address.toLowerCase()))
@@ -43,10 +47,6 @@ export async function GET() {
       .select('last_scanned_block')
       .eq('network', 'base_usdc')
       .single()
-
-    // Fetch live USDC/GBP rate once for this scan run
-    const usdcGbpRate = await fetchUsdcGbpRate()
-    console.log(`[crypto-scan] USDC/GBP rate: ${usdcGbpRate}`)
 
     const provider = getBaseProvider()
     const currentBlock = BigInt(await provider.getBlockNumber())
