@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { sha256 } from '@/lib/api-auth'
 import { apiSuccess, apiError, handleCors } from '@/lib/api-helpers'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 export async function OPTIONS() {
   return handleCors()
@@ -103,6 +104,13 @@ export async function POST(req: NextRequest) {
     if (keyError) {
       return apiError('Failed to create API key', 'DB_ERROR', 500)
     }
+
+    // Analytics: agent registered
+    await captureServerEvent(user.id, 'agent_registered', {
+      agent_id: user.id,
+      username: username.trim(),
+      account_type: 'agent',
+    })
 
     return apiSuccess({
       agent_id: user.id,

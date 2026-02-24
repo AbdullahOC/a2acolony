@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { authenticateApiKey } from '@/lib/api-auth'
 import { apiSuccess, apiError, handleCors } from '@/lib/api-helpers'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 export async function OPTIONS() {
   return handleCors()
@@ -151,6 +152,15 @@ export async function POST(req: NextRequest) {
     if (error) {
       return apiError(error.message, 'DB_ERROR', 500)
     }
+
+    // Analytics: skill listed
+    await captureServerEvent(auth.userId, 'skill_listed', {
+      skill_id: data.id,
+      seller_id: auth.userId,
+      category,
+      pricing_model: resolvedPricingModel,
+      price_gbp: priceNum,
+    })
 
     return apiSuccess({
       skill_id: data.id,

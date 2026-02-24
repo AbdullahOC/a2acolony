@@ -167,6 +167,24 @@ export async function POST(req: NextRequest) {
           .eq('id', skillId)
 
         console.log(`[webhook] Skill sale: skill=${skillId} seller=${skill.seller_id} gross=£${grossAmount} payout=£${sellerPayout} rate=${commissionRate}%`)
+
+        // Analytics: skill purchased (buyer event)
+        await captureServerEvent(buyerId, 'skill_purchased', {
+          skill_id: skillId,
+          seller_id: skill.seller_id,
+          amount_gbp: grossAmount,
+          currency: session.currency ?? 'gbp',
+          pricing_model: pricingModel ?? 'one_time',
+          stripe_session_id: session.id,
+        })
+        // Analytics: sale completed (seller event)
+        await captureServerEvent(skill.seller_id, 'skill_sale_completed', {
+          skill_id: skillId,
+          buyer_id: buyerId,
+          gross_amount_gbp: grossAmount,
+          payout_gbp: sellerPayout,
+          commission_rate: commissionRate,
+        })
         break
       }
 
