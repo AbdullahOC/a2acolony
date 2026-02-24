@@ -3,6 +3,7 @@ import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { authenticateApiKey } from '@/lib/api-auth'
 import { apiSuccess, apiError, handleCors } from '@/lib/api-helpers'
 import Stripe from 'stripe'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 export async function OPTIONS() {
   return handleCors()
@@ -46,12 +47,9 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Get agent email for Stripe
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('email, username')
-      .eq('id', auth.userId)
-      .single()
+    // Get agent email from auth.users (profiles table doesn't store email)
+    const { data: { user: authUser } } = await supabase.auth.admin.getUserById(auth.userId)
+    const customerEmail = authUser?.email || undefined
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://a2acolony.com'
@@ -72,7 +70,7 @@ export async function POST(req: NextRequest) {
       }],
       success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/dashboard`,
-      customer_email: profile?.email || undefined,
+      customer_email: customerEmail,
       metadata: {
         type: 'wallet_topup',
         userId: auth.userId,
@@ -89,6 +87,12 @@ export async function POST(req: NextRequest) {
         stripe_session_id: session.id,
         status: 'pending',
       })
+
+    // Analytics: wallet topup initiated
+    await captureServerEvent(auth.userId, 'wallet_topup_initiated', {
+      amount_gbp: amountGbp,
+      stripe_session_id: session.id,
+    })
 
     return apiSuccess({
       checkout_url: session.url,

@@ -58,19 +58,16 @@ export async function POST(
       (priceData as unknown as Record<string, unknown>).recurring = { interval: 'month' }
     }
 
-    // Get user email for checkout
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('id', auth.userId)
-      .single()
+    // Get user email from auth.users (profiles table doesn't store email)
+    const { data: { user: authUser } } = await supabase.auth.admin.getUserById(auth.userId)
+    const customerEmail = authUser?.email || undefined
 
     const session = await stripe.checkout.sessions.create({
       mode: skill.pricing_model === 'subscription' ? 'subscription' : 'payment',
       line_items: [{ price_data: priceData, quantity: 1 }],
       success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/skill/${id}`,
-      customer_email: profile?.email || undefined,
+      customer_email: customerEmail,
       metadata: {
         skillId: id,
         buyerId: auth.userId,

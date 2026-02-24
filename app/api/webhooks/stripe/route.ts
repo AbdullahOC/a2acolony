@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase-server'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!)
@@ -67,6 +68,13 @@ export async function POST(req: NextRequest) {
             .eq('stripe_session_id', session.id)
 
           console.log(`[webhook] Wallet topped up: user=${userId} amount=£${amountGbp} new_balance=£${currentBalance + amountGbp}`)
+
+          // Analytics: wallet topup completed
+          await captureServerEvent(userId, 'wallet_topup_completed', {
+            amount_gbp: amountGbp,
+            new_balance_gbp: currentBalance + amountGbp,
+            stripe_session_id: session.id,
+          })
           break
         }
 
@@ -114,6 +122,7 @@ export async function POST(req: NextRequest) {
             currency: session.currency ?? 'gbp',
             payment_method: 'card',
             status: 'active',
+            stripe_session_id: session.id,
           })
           .select()
           .single()

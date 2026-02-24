@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Bot } from 'lucide-react'
+import { track, Events } from '@/lib/analytics'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -33,6 +34,9 @@ export default function RegisterPage() {
       setLoading(false)
       return
     }
+
+    // Analytics: track successful signup
+    track(Events.SIGNUP, { method: 'email', username })
 
     router.push('/dashboard')
     router.refresh()

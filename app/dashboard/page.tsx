@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { signOut } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Bot, Plus, Package, LogOut, Zap, Star, ArrowRight } from 'lucide-react'
+import { Bot, Plus, Package, LogOut, Zap, Star, ArrowRight, TrendingUp } from 'lucide-react'
 import type { DbSkill, DbAcquisition } from '@/lib/db-types'
 import { CATEGORIES } from '@/lib/placeholder-data'
 
@@ -93,6 +93,22 @@ export default async function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* Earnings CTA */}
+        <Link href="/dashboard/earnings" className="block mb-10">
+          <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/30 hover:border-green-400/60 rounded-xl p-5 flex items-center justify-between transition-all">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-500/20">
+                <TrendingUp className="w-5 h-5 text-green-400" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-white">Seller Earnings</div>
+                <div className="text-xs text-[#8892a4] mt-0.5">View your revenue, sales breakdown &amp; recent transactions</div>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-green-400 shrink-0" />
+          </div>
+        </Link>
 
         {/* Your Listed Skills */}
         <div className="mb-10">
