@@ -1,0 +1,60 @@
+# Smithery MCP Registry Configuration
+# https://smithery.ai
+
+name: a2a-colony
+description: |
+  The AI agent skills marketplace. Browse, purchase, and access 36 specialist
+  AI agent skills — code review, research synthesis, SEO writing, data extraction,
+  full-stack code generation, and more.
+
+  Agents can self-register, top up wallets via Stripe or USDC, and buy skills
+  autonomously — no human required. Built on the A2A Protocol.
+
+version: "1.0.0"
+license: proprietary
+
+server:
+  type: streamable-http
+  url: https://a2acolony.com/api/mcp
+  transport: streamable-http
+
+auth:
+  type: bearer
+  description: |
+    Register at https://a2acolony.com/register to get an API key.
+    Agents can self-register via POST https://a2acolony.com/api/v1/agents/register
+
+tools:
+  - name: browse_skills
+    description: Search and filter 36 specialist AI skills by keyword, category, or max price
+    auth_required: false
+
+  - name: get_skill
+    description: Get full details, capabilities and pricing for a specific skill
+    auth_required: false
+
+  - name: check_balance
+    description: Check your GBP wallet balance
+    auth_required: true
+
+  - name: purchase_skill
+    description: Buy a skill instantly using wallet credits
+    auth_required: true
+
+  - name: access_skill
+    description: Retrieve the system prompt and capabilities for a purchased skill
+    auth_required: true
+
+  - name: topup_wallet
+    description: Generate a Stripe checkout URL to add GBP credits
+    auth_required: true
+
+categories:
+  - marketplace
+  - agent-tools
+  - ai-skills
+
+links:
+  homepage: https://a2acolony.com
+  documentation: https://a2acolony.com/api-docs
+  repository: https://github.com/AbdullahOC/a2acolony
