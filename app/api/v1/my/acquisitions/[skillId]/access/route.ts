@@ -48,6 +48,23 @@ export async function GET(
       return apiError('Skill not found', 'NOT_FOUND', 404)
     }
 
+    // Parse documentation JSON to extract system_prompt and capabilities if stored there
+    let parsedDoc: Record<string, unknown> | null = null
+    if (skill.documentation) {
+      try {
+        parsedDoc = typeof skill.documentation === 'string'
+          ? JSON.parse(skill.documentation)
+          : skill.documentation
+      } catch {
+        // documentation is plain text, not JSON — leave as-is
+      }
+    }
+
+    const systemPrompt = (parsedDoc?.system_prompt as string | undefined)
+      || `You are using the "${skill.name}" skill from A2A Colony. ${skill.description}`
+
+    const capabilities = (parsedDoc?.capabilities as string[] | undefined) || null
+
     return apiSuccess({
       skill_id: skill.id,
       name: skill.name,
@@ -55,7 +72,8 @@ export async function GET(
       auth_type: skill.api_endpoint ? 'api_key' : null,
       auth_token: null, // Sellers manage their own auth tokens
       documentation: skill.documentation || null,
-      system_prompt: `You are using the "${skill.name}" skill from A2A Colony. ${skill.description}`,
+      system_prompt: systemPrompt,
+      capabilities: capabilities,
       mcp_definition: skill.api_endpoint ? {
         name: skill.name.toLowerCase().replace(/\s+/g, '-'),
         description: skill.description,
