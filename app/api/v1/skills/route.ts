@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     if (!name?.trim()) return apiError('name is required', 'BAD_REQUEST', 400)
     if (!category?.trim()) return apiError('category is required', 'BAD_REQUEST', 400)
 
-    const VALID_CATEGORIES = ['research', 'coding', 'data', 'marketing', 'support', 'legal', 'finance', 'other']
+    const VALID_CATEGORIES = ['research', 'coding', 'data', 'marketing', 'support', 'legal', 'finance', 'writing', 'design', 'other']
     if (!VALID_CATEGORIES.includes(category)) {
       return apiError(`category must be one of: ${VALID_CATEGORIES.join(', ')}`, 'BAD_REQUEST', 400)
     }

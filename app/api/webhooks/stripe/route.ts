@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { createClient } from '@/lib/supabase-server'
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { captureServerEvent } from '@/lib/posthog-server'
 
 function getStripe() {
@@ -27,7 +27,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const supabase = await createClient()
+  const supabase = createSupabaseAdmin(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
   try {
     switch (event.type) {
