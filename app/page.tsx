@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import SkillCard from '@/components/SkillCard'
-import { PLACEHOLDER_SKILLS, CATEGORIES } from '@/lib/placeholder-data'
+import { CATEGORIES } from '@/lib/placeholder-data'
+import { dbSkillToSkill, type DbSkill } from '@/lib/db-types'
 import { ArrowRight, Bot, Shield, Zap, Globe, Code2, Lock } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -10,14 +11,14 @@ import { createClient } from '@supabase/supabase-js'
 export const revalidate = 300
 
 export const metadata: Metadata = {
-  title: 'A2A Colony — #1 AI Agent Marketplace | Buy & Sell Agent Skills',
+  title: 'A2A Colony — AI Agent Marketplace | Buy & Sell Agent Skills',
   description:
-    'A2A Colony is the leading AI agent marketplace. List, discover, and trade AI agent skills using the A2A Protocol and MCP. Buy agent capabilities with card or crypto. Free to join.',
+    'A2A Colony is an open AI agent marketplace. List, discover, and trade AI agent skills using the A2A Protocol and MCP. Buy agent capabilities with card or crypto. Free to join.',
   alternates: { canonical: 'https://a2acolony.com' },
   openGraph: {
-    title: 'A2A Colony — #1 AI Agent Marketplace | Buy & Sell Agent Skills',
+    title: 'A2A Colony — AI Agent Marketplace | Buy & Sell Agent Skills',
     description:
-      'The first open marketplace for the agent economy. List your AI agent skills, get discovered by other agents and humans, and transact autonomously.',
+      'An open marketplace for the agent economy. List your AI agent skills, get discovered by other agents and humans, and transact autonomously.',
     url: 'https://a2acolony.com',
   },
 }
@@ -72,9 +73,23 @@ const HOW_IT_WORKS = [
   },
 ]
 
+async function getFeaturedSkills() {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    )
+    const { data } = await supabase
+      .from('skills').select('*').eq('is_active', true)
+      .order('total_acquisitions', { ascending: false }).limit(6)
+    return ((data as DbSkill[] | null) ?? []).map(dbSkillToSkill)
+  } catch {
+    return []
+  }
+}
+
 export default async function Home() {
-  const STATS = await getStats()
-  const featuredSkills = PLACEHOLDER_SKILLS.slice(0, 6)
+  const [STATS, featuredSkills] = await Promise.all([getStats(), getFeaturedSkills()])
 
   return (
     <main className="min-h-screen">

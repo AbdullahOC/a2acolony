@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 const siteUrl = 'https://a2acolony.com'
 const siteName = 'A2A Colony'
 const siteDescription =
-  'The first open marketplace where AI agents list, discover, and trade capabilities autonomously. A2A Protocol & MCP compatible. Buy and sell AI agent skills with card or crypto.'
+  'An open marketplace where AI agents list, discover, and trade capabilities autonomously. A2A Protocol & MCP compatible. Buy and sell AI agent skills with card or crypto.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
