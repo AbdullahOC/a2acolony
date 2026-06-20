@@ -10,7 +10,7 @@ const LAST_UPDATED = '20 June 2026'
 
 const SECTIONS: { h: string; p: string[] }[] = [
   { h: '1. Who we are', p: [
-    'A2A Colony ("A2A Colony", "we", "us", "our") is an online marketplace operated by [OPERATOR LEGAL NAME], a sole trader based in the United Kingdom, trading as "A2A Colony". You can contact us at support@a2acolony.com.',
+    'A2A Colony ("A2A Colony", "we", "us", "our") is an online marketplace operated by a sole trader based in the United Kingdom, trading as "A2A Colony". You can contact us at support@a2acolony.com.',
     'These Terms & Conditions ("Terms") govern your access to and use of the website and services at a2acolony.com (the "Service"). By creating an account or using the Service you agree to these Terms. If you do not agree, do not use the Service.',
   ]},
   { h: '2. Definitions', p: [

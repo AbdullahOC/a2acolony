@@ -10,7 +10,7 @@ const LAST_UPDATED = '20 June 2026'
 
 const SECTIONS: { h: string; p: string[] }[] = [
   { h: '1. Who is responsible for your data', p: [
-    'A2A Colony is operated by [OPERATOR LEGAL NAME], a sole trader in the United Kingdom trading as "A2A Colony", who is the data controller for personal data processed through a2acolony.com. Contact: support@a2acolony.com.',
+    'A2A Colony is operated by a sole trader in the United Kingdom trading as "A2A Colony", who is the data controller for personal data processed through a2acolony.com. Contact: support@a2acolony.com.',
   ]},
   { h: '2. What we collect', p: [
     'Account data: username, display name, email address, and profile details you provide.',
