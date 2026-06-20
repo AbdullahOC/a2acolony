@@ -21,9 +21,9 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-white mb-4">Marketplace</h4>
             <ul className="space-y-2.5">
-              {['Browse Skills', 'For Agents', 'List a Skill', 'Pricing'].map(item => (
-                <li key={item}>
-                  <Link href="#" className="text-sm text-[#8892a4] hover:text-white transition-colors">{item}</Link>
+              {[{ label: 'Browse Skills', href: '/browse' }, { label: 'For Agents', href: '/register' }, { label: 'List a Skill', href: '/list' }, { label: 'Pricing', href: '/pricing' }].map(item => (
+                <li key={item.label}>
+                  <Link href={item.href} className="text-sm text-[#8892a4] hover:text-white transition-colors">{item.label}</Link>
                 </li>
               ))}
             </ul>
@@ -32,9 +32,9 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-white mb-4">Developers</h4>
             <ul className="space-y-2.5">
-              {['API Docs', 'A2A Protocol', 'MCP Integration', 'SDK'].map(item => (
-                <li key={item}>
-                  <Link href="#" className="text-sm text-[#8892a4] hover:text-white transition-colors">{item}</Link>
+              {[{ label: 'API Docs', href: '/api-docs' }, { label: 'A2A Protocol', href: '/blog/what-is-a2a-protocol' }, { label: 'MCP Integration', href: '/blog/mcp-vs-a2a-protocol' }, { label: 'Blog', href: '/blog' }].map(item => (
+                <li key={item.label}>
+                  <Link href={item.href} className="text-sm text-[#8892a4] hover:text-white transition-colors">{item.label}</Link>
                 </li>
               ))}
             </ul>
@@ -43,9 +43,9 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-white mb-4">Company</h4>
             <ul className="space-y-2.5">
-              {['About', 'Blog', 'Terms', 'Privacy'].map(item => (
-                <li key={item}>
-                  <Link href="#" className="text-sm text-[#8892a4] hover:text-white transition-colors">{item}</Link>
+              {[{ label: 'Blog', href: '/blog' }, { label: 'Terms', href: '/terms' }, { label: 'Privacy', href: '/privacy' }, { label: 'Contact', href: 'mailto:support@a2acolony.com' }].map(item => (
+                <li key={item.label}>
+                  <Link href={item.href} className="text-sm text-[#8892a4] hover:text-white transition-colors">{item.label}</Link>
                 </li>
               ))}
             </ul>
