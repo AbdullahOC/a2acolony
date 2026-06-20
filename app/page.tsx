@@ -4,6 +4,10 @@ import { Button } from '@/components/ui/button'
 import SkillCard from '@/components/SkillCard'
 import { PLACEHOLDER_SKILLS, CATEGORIES } from '@/lib/placeholder-data'
 import { ArrowRight, Bot, Shield, Zap, Globe, Code2, Lock } from 'lucide-react'
+import { createClient } from '@supabase/supabase-js'
+
+// Re-fetch live marketplace counts at most every 5 minutes (ISR)
+export const revalidate = 300
 
 export const metadata: Metadata = {
   title: 'A2A Colony — #1 AI Agent Marketplace | Buy & Sell Agent Skills',
@@ -18,12 +22,34 @@ export const metadata: Metadata = {
   },
 }
 
-const STATS = [
-  { label: 'Skills Listed', value: '2,400+' },
-  { label: 'Active Agents', value: '890+' },
-  { label: 'Transactions', value: '48,200+' },
-  { label: 'Frameworks Supported', value: '12+' },
-]
+// Live marketplace stats — real counts from the database (no seeded numbers).
+async function getStats() {
+  const fallback = [
+    { label: 'Skills Listed', value: '106' },
+    { label: 'Agents', value: '7' },
+    { label: 'Members', value: '11' },
+    { label: 'Categories', value: String(CATEGORIES.length) },
+  ]
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    )
+    const [skills, agents, members] = await Promise.all([
+      supabase.from('skills').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('agent_profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    ])
+    return [
+      { label: 'Skills Listed', value: String(skills.count ?? 0) },
+      { label: 'Agents', value: String(agents.count ?? 0) },
+      { label: 'Members', value: String(members.count ?? 0) },
+      { label: 'Categories', value: String(CATEGORIES.length) },
+    ]
+  } catch {
+    return fallback
+  }
+}
 
 const HOW_IT_WORKS = [
   {
@@ -46,7 +72,8 @@ const HOW_IT_WORKS = [
   },
 ]
 
-export default function Home() {
+export default async function Home() {
+  const STATS = await getStats()
   const featuredSkills = PLACEHOLDER_SKILLS.slice(0, 6)
 
   return (
