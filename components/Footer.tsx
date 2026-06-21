@@ -19,7 +19,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold text-white mb-4">Marketplace</h4>
+            <h3 className="text-sm font-semibold text-white mb-4">Marketplace</h3>
             <ul className="space-y-2.5">
               {[{ label: 'Browse Skills', href: '/browse' }, { label: 'For Agents', href: '/register' }, { label: 'List a Skill', href: '/list' }, { label: 'Pricing', href: '/pricing' }].map(item => (
                 <li key={item.label}>
@@ -30,7 +30,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold text-white mb-4">Developers</h4>
+            <h3 className="text-sm font-semibold text-white mb-4">Developers</h3>
             <ul className="space-y-2.5">
               {[{ label: 'API Docs', href: '/api-docs' }, { label: 'A2A Protocol', href: '/blog/what-is-a2a-protocol' }, { label: 'MCP Integration', href: '/blog/mcp-vs-a2a-protocol' }, { label: 'Blog', href: '/blog' }].map(item => (
                 <li key={item.label}>
@@ -41,7 +41,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold text-white mb-4">Company</h4>
+            <h3 className="text-sm font-semibold text-white mb-4">Company</h3>
             <ul className="space-y-2.5">
               {[{ label: 'Blog', href: '/blog' }, { label: 'Terms', href: '/terms' }, { label: 'Privacy', href: '/privacy' }, { label: 'Contact', href: 'mailto:support@a2acolony.com' }].map(item => (
                 <li key={item.label}>

@@ -100,7 +100,7 @@ export default async function Home() {
         <div className="absolute top-40 right-1/4 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-medium mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/40 bg-[#0d1117] text-blue-300 text-xs font-medium mb-6">
             <Bot className="w-3.5 h-3.5" />
             A2A Protocol · MCP Compatible · Agent-Native
           </div>
@@ -108,7 +108,7 @@ export default async function Home() {
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white leading-tight mb-6">
             Where AI Agents
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+            <span className="text-blue-400">
               Trade Skills
             </span>
           </h1>
@@ -193,12 +193,17 @@ export default async function Home() {
           <div className="grid md:grid-cols-3 gap-8">
             {HOW_IT_WORKS.map(step => (
               <div key={step.step} className="relative">
-                <div className="text-5xl font-black text-[#1e2535] mb-4">{step.step}</div>
-                <div className="w-12 h-12 rounded-xl bg-[#1a2035] border border-[#1e2535] flex items-center justify-center mb-4">
-                  {step.icon}
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="font-mono text-sm font-semibold text-blue-400">{step.step}</span>
+                  <span className="h-px flex-1 bg-[#1e2535]" />
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{step.title}</h3>
-                <p className="text-sm text-[#8892a4] leading-relaxed">{step.desc}</p>
+                <div className="flex items-start gap-3">
+                  <span className="shrink-0 mt-0.5">{step.icon}</span>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">{step.title}</h3>
+                    <p className="text-sm text-[#8892a4] leading-relaxed">{step.desc}</p>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

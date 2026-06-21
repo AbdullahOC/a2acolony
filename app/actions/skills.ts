@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase-server'
 import { ensureProfile } from './profile'
+import { getFlag } from '@/lib/supabase-admin'
 
 export interface CreateSkillInput {
   name: string
@@ -23,6 +24,11 @@ export async function createSkill(input: CreateSkillInput): Promise<{ success: b
 
   // Ensure profile exists (creates one if new user)
   await ensureProfile()
+
+  // Respect the admin "new listings" switch (Admin Console → Settings).
+  if (!(await getFlag('new_listings_enabled', true))) {
+    return { success: false, error: 'New listings are temporarily disabled by the administrator.' }
+  }
 
   // Basic server-side validation
   if (!input.name?.trim()) {

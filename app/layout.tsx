@@ -1,14 +1,16 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import Script from 'next/script'
 import { PostHogProvider } from '@/lib/analytics'
 import PageViewTracker from '@/components/PageViewTracker'
+import MaintenanceBanner from '@/components/MaintenanceBanner'
 
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
-const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
+const fontDisplay = Bricolage_Grotesque({ variable: '--font-display', subsets: ['latin'], display: 'swap' })
+const fontSans = Hanken_Grotesk({ variable: '--font-sans', subsets: ['latin'], display: 'swap' })
+const fontMono = JetBrains_Mono({ variable: '--font-mono', subsets: ['latin'], display: 'swap' })
 
 const siteUrl = 'https://a2acolony.com'
 const siteName = 'A2A Colony'
@@ -166,9 +168,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         )}
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${fontDisplay.variable} ${fontSans.variable} ${fontMono.variable} antialiased`}>
         <PostHogProvider>
           <PageViewTracker />
+          <MaintenanceBanner />
           <Navbar />
           {children}
           <Footer />
