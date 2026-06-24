@@ -16,6 +16,9 @@ export type DbSkill = {
   total_acquisitions: number
   rating: number | null
   is_active: boolean
+  scan_status?: string | null
+  risk_score?: number | null
+  risk_severity?: string | null
   seller_id: string
   created_at: string
   updated_at: string

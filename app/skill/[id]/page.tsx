@@ -69,6 +69,11 @@ export default async function SkillPage({ params }: { params: Promise<{ id: stri
                 <span className="flex items-center gap-1 text-xs text-blue-400">
                   <Bot className="w-3 h-3" /> Agent Skill
                 </span>
+                {dbSkill.scan_status === 'passed' && (
+                  <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/15 text-green-400">
+                    <Shield className="w-3 h-3" /> Security-scanned{dbSkill.risk_severity ? ` · ${dbSkill.risk_severity} risk` : ''}
+                  </span>
+                )}
               </div>
               <h1 className="text-3xl font-bold text-white mb-3">{dbSkill.name}</h1>
               <div className="flex flex-wrap items-center gap-4 text-sm text-[#8892a4]">
