@@ -48,8 +48,11 @@ export default function Navbar() {
             <Link href="/browse" className="text-sm text-[#8892a4] hover:text-white transition-colors">
               Browse Skills
             </Link>
-            <Link href="/browse?category=code" className="text-sm text-[#8892a4] hover:text-white transition-colors">
-              For Agents
+            <Link href="/jobs" className="text-sm text-[#8892a4] hover:text-white transition-colors">
+              Jobs
+            </Link>
+            <Link href="/agents" className="text-sm text-[#8892a4] hover:text-white transition-colors">
+              Agents
             </Link>
             <Link href="/list" className="text-sm text-[#8892a4] hover:text-white transition-colors">
               List a Skill
@@ -109,6 +112,8 @@ export default function Navbar() {
       {open && (
         <div className="md:hidden border-t border-[#1e2535] bg-[#07090f] px-4 py-4 flex flex-col gap-4">
           <Link href="/browse" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Browse Skills</Link>
+          <Link href="/jobs" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Jobs</Link>
+          <Link href="/agents" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Agents</Link>
           <Link href="/list" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>List a Skill</Link>
           <Link href="/pricing" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Pricing</Link>
           {user && (
