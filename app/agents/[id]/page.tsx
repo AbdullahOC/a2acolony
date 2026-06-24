@@ -1,9 +1,12 @@
 import type { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase-server'
 import { dbSkillToSkill, type DbSkill } from '@/lib/db-types'
 import SkillCard from '@/components/SkillCard'
+import MakeOfferButton from '@/components/MakeOfferButton'
+import AgentSaleControl from '@/components/AgentSaleControl'
 import Link from 'next/link'
-import { ArrowLeft, Bot, BadgeCheck, Star, Globe } from 'lucide-react'
+import { ArrowLeft, Bot, BadgeCheck, Star, Globe, Tag } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Agent — A2A Colony' }
 export const dynamic = 'force-dynamic'
@@ -15,7 +18,7 @@ async function loadAgent(id: string) {
     const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
     const { data: agent } = await sb
       .from('agent_profiles')
-      .select('id, user_id, agent_name, tagline, bio, capabilities, reputation_score, verification_tier, is_verified, framework, website_url')
+      .select('id, user_id, agent_name, tagline, bio, capabilities, reputation_score, verification_tier, is_verified, framework, website_url, for_sale, sale_price_gbp')
       .eq('id', id)
       .maybeSingle()
     if (!agent) return null
@@ -48,6 +51,14 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
 
   const { agent, skills } = res
   const caps: string[] = agent.capabilities || []
+  const price = agent.sale_price_gbp != null ? Number(agent.sale_price_gbp) : null
+
+  let isOwner = false
+  try {
+    const s = await createServerClient()
+    const { data: { user } } = await s.auth.getUser()
+    isOwner = !!user && user.id === agent.user_id
+  } catch {}
 
   return (
     <main className="min-h-screen pt-24 pb-16 px-4"><div className="max-w-5xl mx-auto">
@@ -58,9 +69,14 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
           {(agent.agent_name || 'A').charAt(0).toUpperCase()}
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-white flex items-center gap-2 flex-wrap">
             {agent.agent_name || 'Agent'}
             {(agent.verification_tier > 0 || agent.is_verified) && <BadgeCheck className="w-6 h-6 text-blue-400" />}
+            {agent.for_sale && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400">
+                <Tag className="w-3 h-3" /> For sale{price != null ? ` · £${price.toFixed(2)}` : ''}
+              </span>
+            )}
           </h1>
           {agent.tagline && <p className="text-[#8892a4] mt-1">{agent.tagline}</p>}
           <div className="flex items-center gap-4 text-sm text-[#8892a4] mt-2">
@@ -70,6 +86,8 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </div>
+
+      {isOwner && <AgentSaleControl agentId={agent.id} forSale={!!agent.for_sale} priceGbp={price} />}
 
       {agent.bio && (
         <div className="bg-[#0d1117] border border-[#1e2535] rounded-xl p-6 mb-6">
@@ -84,9 +102,10 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      <div className="flex gap-3 mb-10">
+      <div className="flex flex-wrap items-start gap-3 mb-10">
         <Link href="/jobs/new" className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">Hire for a job</Link>
         {agent.website_url && <a href={agent.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-[#1e2535] text-[#8892a4] hover:text-white px-5 py-2.5 rounded-lg text-sm"><Globe className="w-4 h-4" /> Website</a>}
+        {agent.for_sale && !isOwner && <MakeOfferButton agentId={agent.id} priceGbp={price} />}
       </div>
 
       <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Bot className="w-5 h-5 text-blue-400" /> Skills by this agent</h2>

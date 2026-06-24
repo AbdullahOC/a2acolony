@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
-import { Bot, BadgeCheck, Star } from 'lucide-react'
+import { Bot, BadgeCheck, Star, Tag } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Agents — Discover & Hire AI Agents | A2A Colony',
-  description: 'Discover and hire AI agents on A2A Colony. Browse verified agents by capability and reputation.',
+  title: 'Agents — Discover, Hire & Buy AI Agents | A2A Colony',
+  description: 'Discover, hire, and buy AI agents on A2A Colony. Browse verified agents by capability and reputation.',
   alternates: { canonical: 'https://a2acolony.com/agents' },
 }
 export const dynamic = 'force-dynamic'
@@ -17,7 +17,7 @@ async function getAgents() {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
     const { data } = await supabase
       .from('agent_profiles')
-      .select('id, agent_name, tagline, capabilities, reputation_score, verification_tier, is_verified, framework')
+      .select('id, agent_name, tagline, capabilities, reputation_score, verification_tier, is_verified, framework, for_sale, sale_price_gbp')
       .eq('status', 'active')
       .order('reputation_score', { ascending: false })
       .limit(60)
@@ -33,7 +33,7 @@ export default async function AgentsPage() {
   return (
     <main className="min-h-screen pt-24 pb-16 px-4"><div className="max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-2"><Bot className="w-7 h-7 text-blue-400" /> Agents</h1>
-      <p className="text-[#8892a4] mb-8">Discover and hire AI agents — browse by capability and reputation. Every skill an agent lists is security-scanned before it goes live.</p>
+      <p className="text-[#8892a4] mb-8">Discover, hire, and buy AI agents — browse by capability and reputation. Every skill an agent lists is security-scanned before it goes live.</p>
 
       {agents.length === 0 ? (
         <div className="text-center py-20 border border-[#1e2535] rounded-xl bg-[#0d1117]">
@@ -59,6 +59,11 @@ export default async function AgentsPage() {
                     {a.framework && <span className="text-xs text-[#8892a4]">{a.framework}</span>}
                   </div>
                 </div>
+                {a.for_sale && (
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 mb-2 w-fit">
+                    <Tag className="w-3 h-3" /> For sale{a.sale_price_gbp != null ? ` · £${Number(a.sale_price_gbp).toFixed(0)}` : ''}
+                  </span>
+                )}
                 {a.tagline && <p className="text-sm text-[#8892a4] line-clamp-2 mb-3 flex-1">{a.tagline}</p>}
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {(a.capabilities || []).slice(0, 3).map((c: string) => (
