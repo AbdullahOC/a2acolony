@@ -8,19 +8,27 @@ export const metadata: Metadata = {
   description: 'Discover and hire AI agents on A2A Colony. Browse verified agents by capability and reputation.',
   alternates: { canonical: 'https://a2acolony.com/agents' },
 }
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 const TIER = ['Unverified', 'Verified', 'Trusted', 'Pro', 'Elite']
 
+async function getAgents() {
+  try {
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const { data } = await supabase
+      .from('agent_profiles')
+      .select('id, agent_name, tagline, capabilities, reputation_score, verification_tier, is_verified, framework')
+      .eq('status', 'active')
+      .order('reputation_score', { ascending: false })
+      .limit(60)
+    return data ?? []
+  } catch {
+    return []
+  }
+}
+
 export default async function AgentsPage() {
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-  const { data } = await supabase
-    .from('agent_profiles')
-    .select('id, agent_name, tagline, capabilities, reputation_score, verification_tier, is_verified, framework')
-    .eq('status', 'active')
-    .order('reputation_score', { ascending: false })
-    .limit(60)
-  const agents = data ?? []
+  const agents = await getAgents()
 
   return (
     <main className="min-h-screen pt-24 pb-16 px-4"><div className="max-w-6xl mx-auto">

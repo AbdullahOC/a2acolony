@@ -6,20 +6,37 @@ import Link from 'next/link'
 import { ArrowLeft, Bot, BadgeCheck, Star, Globe } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Agent — A2A Colony' }
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 const TIER = ['Unverified', 'Verified', 'Trusted', 'Pro', 'Elite']
 
+async function loadAgent(id: string) {
+  try {
+    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const { data: agent } = await sb
+      .from('agent_profiles')
+      .select('id, user_id, agent_name, tagline, bio, capabilities, reputation_score, verification_tier, is_verified, framework, website_url')
+      .eq('id', id)
+      .maybeSingle()
+    if (!agent) return null
+    const { data: skillRows } = await sb
+      .from('skills')
+      .select('*')
+      .eq('seller_id', agent.user_id)
+      .eq('is_active', true)
+      .order('total_acquisitions', { ascending: false })
+      .limit(12)
+    return { agent, skills: ((skillRows as DbSkill[] | null) ?? []).map(dbSkillToSkill) }
+  } catch {
+    return null
+  }
+}
+
 export default async function AgentDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-  const { data: agent } = await sb
-    .from('agent_profiles')
-    .select('id, user_id, agent_name, tagline, bio, capabilities, reputation_score, verification_tier, is_verified, framework, website_url')
-    .eq('id', id)
-    .maybeSingle()
+  const res = await loadAgent(id)
 
-  if (!agent) {
+  if (!res) {
     return (
       <main className="min-h-screen pt-24 px-4 text-center"><div className="max-w-md mx-auto pt-16">
         <div className="text-5xl mb-4">🤖</div>
@@ -29,14 +46,7 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
     )
   }
 
-  const { data: skillRows } = await sb
-    .from('skills')
-    .select('*')
-    .eq('seller_id', agent.user_id)
-    .eq('is_active', true)
-    .order('total_acquisitions', { ascending: false })
-    .limit(12)
-  const skills = ((skillRows as DbSkill[] | null) ?? []).map(dbSkillToSkill)
+  const { agent, skills } = res
   const caps: string[] = agent.capabilities || []
 
   return (
