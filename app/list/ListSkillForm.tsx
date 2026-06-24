@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CATEGORIES } from '@/lib/placeholder-data'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2, ShieldCheck } from 'lucide-react'
 import { createSkill } from '@/app/actions/skills'
 
 const STEPS = ['Basic Info', 'Pricing', 'Integration', 'Preview']
@@ -14,7 +14,7 @@ export default function ListSkillForm() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
-    name: '', description: '', category: '', pricingModel: 'per_use', price: '', apiEndpoint: '', docs: '',
+    name: '', description: '', category: '', pricingModel: 'per_use', price: '', apiEndpoint: '', docs: '', sourceUrl: '',
   })
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<{ skillId: string } | null>(null)
@@ -46,7 +46,6 @@ export default function ListSkillForm() {
 
   const handleSubmit = () => {
     setError(null)
-    // Final validation
     if (!form.name.trim()) { setError('Skill name is required.'); return }
     if (!form.category) { setError('Please select a category.'); return }
     const price = parseFloat(form.price)
@@ -66,9 +65,9 @@ export default function ListSkillForm() {
     return (
       <main className="min-h-screen pt-24 pb-16 px-4">
         <div className="max-w-2xl mx-auto text-center">
-          <CheckCircle2 className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-white mb-2">Skill Listed!</h1>
-          <p className="text-[#8892a4] mb-8">Your skill has been submitted and is now live on the marketplace.</p>
+          <ShieldCheck className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+          <h1 className="text-3xl font-bold text-white mb-2">Submitted for security scan</h1>
+          <p className="text-[#8892a4] mb-8">Your skill is being scanned by SkillSpector. It goes live automatically once it passes — you can track its status on your dashboard.</p>
           <div className="flex gap-3 justify-center">
             <Button
               onClick={() => router.push('/dashboard')}
@@ -216,6 +215,19 @@ export default function ListSkillForm() {
           {step === 2 && (
             <div className="space-y-4">
               <div>
+                <label className="block text-sm font-medium text-white mb-1.5">Source Repository URL <span className="text-blue-400">(recommended)</span></label>
+                <Input
+                  placeholder="https://github.com/you/your-skill"
+                  value={form.sourceUrl}
+                  onChange={e => update('sourceUrl', e.target.value)}
+                  className="bg-[#07090f] border-[#1e2535] text-white placeholder:text-[#8892a4] font-mono text-sm"
+                />
+                <p className="text-xs text-[#8892a4] mt-1 flex items-start gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-400 mt-0.5 shrink-0" />
+                  We security-scan every skill with SkillSpector before it goes live. A public repo gives the deepest scan of your actual code; otherwise we scan your docs below.
+                </p>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-white mb-1.5">API Endpoint</label>
                 <Input
                   placeholder="https://your-agent.com/api/invoke"
@@ -240,13 +252,14 @@ export default function ListSkillForm() {
 
           {step === 3 && (
             <div className="text-center py-6">
-              <CheckCircle2 className="w-14 h-14 text-blue-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">Ready to publish?</h3>
-              <p className="text-[#8892a4] text-sm mb-6">Your skill will be live immediately on the marketplace.</p>
+              <ShieldCheck className="w-14 h-14 text-blue-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-2">Ready to submit?</h3>
+              <p className="text-[#8892a4] text-sm mb-6">Your skill will be security-scanned by SkillSpector and goes live automatically once it passes.</p>
               <div className="bg-[#07090f] border border-[#1e2535] rounded-lg p-4 text-left mb-6 space-y-2">
                 <div className="flex justify-between text-sm"><span className="text-[#8892a4]">Skill name</span><span className="text-white">{form.name || 'Not set'}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-[#8892a4]">Category</span><span className="text-white capitalize">{form.category || 'Not set'}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-[#8892a4]">Pricing</span><span className="text-white">£{form.price} {form.pricingModel}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-[#8892a4]">Source repo</span><span className="text-white">{form.sourceUrl ? 'Provided (deep scan)' : 'Docs-only scan'}</span></div>
               </div>
               <Button
                 onClick={handleSubmit}
@@ -259,7 +272,7 @@ export default function ListSkillForm() {
                     Submitting...
                   </>
                 ) : (
-                  'Submit for Review'
+                  'Submit for security scan'
                 )}
               </Button>
             </div>

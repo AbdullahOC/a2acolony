@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase-server'
 import { ensureProfile } from './profile'
 import { getFlag } from '@/lib/supabase-admin'
+import { triggerSkillScan } from '@/lib/scan'
 
 export interface CreateSkillInput {
   name: string
@@ -12,6 +13,7 @@ export interface CreateSkillInput {
   price: string
   apiEndpoint: string
   docs: string
+  sourceUrl?: string
 }
 
 export async function createSkill(input: CreateSkillInput): Promise<{ success: boolean; skillId?: string; error?: string }> {
@@ -53,7 +55,8 @@ export async function createSkill(input: CreateSkillInput): Promise<{ success: b
       price_gbp: priceNum,
       api_endpoint: input.apiEndpoint?.trim() || '',
       documentation: input.docs?.trim() || '',
-      is_active: true,
+      is_active: false,
+      scan_status: 'queued',
     })
     .select('id')
     .single()
@@ -62,6 +65,16 @@ export async function createSkill(input: CreateSkillInput): Promise<{ success: b
     console.error('Error creating skill:', error)
     return { success: false, error: error.message }
   }
+
+  // Security scan gate: scan the source (repo URL preferred, else docs) via SkillSpector
+  // before the skill can go live. The skill stays hidden until the scan passes.
+  const repo = input.sourceUrl?.trim()
+  await triggerSkillScan({
+    skillId: data.id,
+    sellerId: user.id,
+    sourceType: repo ? 'repo' : 'skill_md',
+    sourceRef: repo || input.docs?.trim() || input.description?.trim() || input.name.trim(),
+  })
 
   return { success: true, skillId: data.id }
 }
