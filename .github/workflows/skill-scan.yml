@@ -1,0 +1,56 @@
+name: Skill Security Scan
+
+on:
+  repository_dispatch:
+    types: [skill-scan]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install SkillSpector
+        run: |
+          pip install uv
+          git clone --depth 1 https://github.com/NVIDIA/skillspector.git /tmp/ss
+          uv pip install --system /tmp/ss
+
+      - name: Prepare scan target
+        id: prep
+        env:
+          SRC_TYPE: ${{ github.event.client_payload.source_type }}
+          SRC_REF: ${{ github.event.client_payload.source_ref }}
+        run: |
+          if [ "$SRC_TYPE" = "repo" ]; then
+            echo "target=$SRC_REF" >> "$GITHUB_OUTPUT"
+          else
+            mkdir -p /tmp/skill
+            printf '%s' "$SRC_REF" > /tmp/skill/SKILL.md
+            echo "target=/tmp/skill" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run SkillSpector (static)
+        run: |
+          set +e
+          skillspector scan "${{ steps.prep.outputs.target }}" --no-llm --format json --output /tmp/report.json
+          echo "scan exit: $?"
+
+      - name: Post result to callback
+        env:
+          CALLBACK_SECRET: ${{ secrets.SCAN_CALLBACK_SECRET }}
+          SCAN_ID: ${{ github.event.client_payload.scan_id }}
+        run: |
+          if [ -f /tmp/report.json ]; then
+            jq -n --arg id "$SCAN_ID" --slurpfile r /tmp/report.json '{scan_id:$id, report:$r[0]}' > /tmp/payload.json
+          else
+            jq -n --arg id "$SCAN_ID" '{scan_id:$id, error:"scan produced no report"}' > /tmp/payload.json
+          fi
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $CALLBACK_SECRET" \
+            -H "Content-Type: application/json" \
+            --data @/tmp/payload.json \
+            https://a2acolony.com/api/v1/scans/callback
