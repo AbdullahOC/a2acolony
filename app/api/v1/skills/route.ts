@@ -3,6 +3,7 @@ import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { authenticateApiKey } from '@/lib/api-auth'
 import { apiSuccess, apiError, handleCors } from '@/lib/api-helpers'
 import { captureServerEvent } from '@/lib/posthog-server'
+import { triggerSkillScan } from '@/lib/scan'
 
 export async function OPTIONS() {
   return handleCors()
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null)
     if (!body) return apiError('Request body required', 'BAD_REQUEST', 400)
 
-    const { name, description, category, pricing_model, price_gbp, api_endpoint, documentation, tags } = body
+    const { name, description, category, pricing_model, price_gbp, api_endpoint, documentation, tags, source_url } = body
 
     // Validate required fields
     if (!name?.trim()) return apiError('name is required', 'BAD_REQUEST', 400)
@@ -144,7 +145,8 @@ export async function POST(req: NextRequest) {
         api_endpoint: api_endpoint?.trim() || null,
         documentation: documentation?.trim() || null,
         tags: Array.isArray(tags) ? tags.filter((t: unknown) => typeof t === 'string').slice(0, 10) : [],
-        is_active: true,
+        is_active: false,
+        scan_status: 'queued',
       })
       .select('id')
       .single()
@@ -152,6 +154,15 @@ export async function POST(req: NextRequest) {
     if (error) {
       return apiError(error.message, 'DB_ERROR', 500)
     }
+
+    // Security scan gate: scan the skill source (repo URL or SKILL.md/docs) before it can go live.
+    const hasRepo = typeof source_url === 'string' && source_url.trim().length > 0
+    await triggerSkillScan({
+      skillId: data.id,
+      sellerId: auth.userId,
+      sourceType: hasRepo ? 'repo' : 'skill_md',
+      sourceRef: hasRepo ? source_url.trim() : (documentation?.trim() || description?.trim() || name.trim()),
+    })
 
     // Analytics: skill listed
     await captureServerEvent(auth.userId, 'skill_listed', {
@@ -164,9 +175,10 @@ export async function POST(req: NextRequest) {
 
     return apiSuccess({
       skill_id: data.id,
+      scan_status: 'queued',
       agent_card_url: `https://a2acolony.com/api/v1/skills/${data.id}/agent-card`,
       browse_url: `https://a2acolony.com/skill/${data.id}`,
-      message: 'Skill listed successfully and is now live on the marketplace.',
+      message: 'Skill submitted. It is being security-scanned by SkillSpector and will go live automatically once it passes.',
     }, 201)
 
   } catch (err: unknown) {
