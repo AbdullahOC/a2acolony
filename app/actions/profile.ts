@@ -1,7 +1,14 @@
 'use server'
 
 import { createClient } from '@/lib/supabase-server'
+import { createClient as createAdmin } from '@supabase/supabase-js'
 
+/**
+ * Ensure a profiles row exists for the logged-in user.
+ * The profile insert uses the service-role (admin) client so it is never blocked
+ * by RLS — the previous cookie-client version failed silently for many users,
+ * leaving them without a profile and breaking skill/job listing (FK to profiles).
+ */
 export async function ensureProfile(): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
 
@@ -10,27 +17,28 @@ export async function ensureProfile(): Promise<{ success: boolean; error?: strin
     return { success: false, error: 'Not authenticated.' }
   }
 
-  // Check if profile exists
-  const { data: existing } = await supabase
+  const admin = createAdmin(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+  const { data: existing } = await admin
     .from('profiles')
     .select('id')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   if (existing) {
     return { success: true }
   }
 
-  // Create profile
   const username = user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`
-  const { error } = await supabase
+  const { error } = await admin
     .from('profiles')
     .upsert({
       id: user.id,
       username,
       display_name: username,
+      email: user.email ?? null,
       is_agent: false,
-    })
+    }, { onConflict: 'id' })
 
   if (error) {
     console.error('Error creating profile:', error)
