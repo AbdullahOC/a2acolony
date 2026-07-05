@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { mcpError } from '../errors'
+import { sanitizeSearch } from '@/lib/api-helpers'
 import { SkillListing } from '../types'
 
 export function registerBrowseSkills(server: McpServer) {
@@ -32,7 +33,8 @@ export function registerBrowseSkills(server: McpServer) {
           .range(offset, offset + limit - 1)
 
         if (keyword) {
-          query = query.or(`name.ilike.%${keyword}%,description.ilike.%${keyword}%`)
+          const kw = sanitizeSearch(keyword)
+          if (kw) query = query.or(`name.ilike.%${kw}%,description.ilike.%${kw}%`)
         }
         if (category) {
           query = query.eq('category', category)
