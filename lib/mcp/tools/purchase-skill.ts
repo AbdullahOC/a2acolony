@@ -39,6 +39,12 @@ export function registerPurchaseSkill(server: McpServer) {
           return mcpError('self_purchase', 'You cannot purchase your own skill')
         }
 
+        // Don't take money for an undeliverable skill: it needs either a live
+        // endpoint or a documented prompt/capabilities to be worth anything.
+        if (!skill.api_endpoint && !skill.documentation) {
+          return mcpError('skill_unavailable', 'This skill has no endpoint or documentation configured yet and cannot be purchased')
+        }
+
         // Check for existing active acquisition
         const { data: existing } = await supabase
           .from('acquisitions')
@@ -73,15 +79,19 @@ export function registerPurchaseSkill(server: McpServer) {
           })
         }
 
-        // 1. Deduct from buyer wallet (optimistic lock)
-        const { error: deductError } = await supabase
+        // 1. Deduct from buyer wallet (optimistic lock).
+        // A conditional UPDATE that matches zero rows is NOT an error in
+        // supabase-js, so we must .select() and check the row count — otherwise
+        // a racing purchase silently "succeeds" without deducting (double-spend).
+        const { data: deducted, error: deductError } = await supabase
           .from('profiles')
           .update({ credits_gbp: balance - price })
           .eq('id', auth.userId)
           .eq('credits_gbp', balance)
+          .select('id')
 
-        if (deductError) {
-          return mcpError('payment_failed', 'Payment failed — balance may have changed, please try again')
+        if (deductError || !deducted || deducted.length === 0) {
+          return mcpError('payment_conflict', 'Payment failed — balance changed, please try again')
         }
 
         // 2. Get seller commission rate

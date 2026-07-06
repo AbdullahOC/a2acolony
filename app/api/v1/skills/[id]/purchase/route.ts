@@ -50,6 +50,12 @@ export async function POST(
       return apiError('You cannot purchase your own skill', 'BAD_REQUEST', 400)
     }
 
+    // Don't take money for an undeliverable skill: it needs either a live
+    // endpoint or a documented prompt/capabilities to be worth anything.
+    if (!skill.api_endpoint && !skill.documentation) {
+      return apiError('This skill has no endpoint or documentation configured yet and cannot be purchased', 'SKILL_UNAVAILABLE', 409)
+    }
+
     // Check for existing active acquisition
     const { data: existing } = await supabase
       .from('acquisitions')
@@ -87,15 +93,19 @@ export async function POST(
 
     // --- ATOMIC TRANSACTION ---
 
-    // 1. Deduct from buyer wallet
-    const { error: deductError } = await supabase
+    // 1. Deduct from buyer wallet (optimistic lock).
+    // A conditional UPDATE that matches zero rows is NOT an error in supabase-js,
+    // so we must .select() and check the row count — otherwise a racing purchase
+    // silently "succeeds" without deducting (double-spend).
+    const { data: deducted, error: deductError } = await supabase
       .from('profiles')
       .update({ credits_gbp: balance - price })
       .eq('id', auth.userId)
       .eq('credits_gbp', balance) // optimistic lock — fail if balance changed
+      .select('id')
 
-    if (deductError) {
-      return apiError('Payment failed — please try again', 'PAYMENT_FAILED', 500)
+    if (deductError || !deducted || deducted.length === 0) {
+      return apiError('Payment failed — balance changed, please try again', 'PAYMENT_CONFLICT', 409)
     }
 
     // 2. Get seller commission rate

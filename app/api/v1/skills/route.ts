@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { authenticateApiKey } from '@/lib/api-auth'
-import { apiSuccess, apiError, handleCors } from '@/lib/api-helpers'
+import { apiSuccess, apiError, handleCors, sanitizeSearch } from '@/lib/api-helpers'
 import { captureServerEvent } from '@/lib/posthog-server'
 import { triggerSkillScan } from '@/lib/scan'
 
@@ -31,7 +31,8 @@ export async function GET(req: NextRequest) {
       .range(offset, offset + limit - 1)
 
     if (q) {
-      query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
+      const kw = sanitizeSearch(q)
+      if (kw) query = query.or(`name.ilike.%${kw}%,description.ilike.%${kw}%`)
     }
     if (category) {
       query = query.eq('category', category)
