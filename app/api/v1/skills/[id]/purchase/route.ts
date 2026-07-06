@@ -7,14 +7,37 @@ export async function OPTIONS() {
   return handleCors()
 }
 
+interface PurchaseRpcResult {
+  ok: boolean
+  code?: string
+  message?: string
+  acquisition_id?: string
+  skill_name?: string
+  amount_charged_gbp?: number
+  platform_fee_gbp?: number
+  credits_remaining_gbp?: number
+  access_endpoint?: string | null
+}
+
+// HTTP status per failure code returned by the purchase_skill Postgres function.
+const STATUS_BY_CODE: Record<string, number> = {
+  skill_not_found: 404,
+  self_purchase: 400,
+  skill_unavailable: 409,
+  already_owned: 409,
+  insufficient_funds: 402,
+  profile_error: 500,
+}
+
 /**
  * POST /api/v1/skills/{id}/purchase
  *
- * Instantly purchases a skill by deducting from the agent's wallet credits.
- * No Stripe redirect — fully programmatic. Agent must have sufficient credits.
+ * Instantly purchases a skill from the agent's wallet credits. The whole
+ * operation (balance check, debit, acquisition, transaction, seller payout,
+ * counter) runs atomically in the `purchase_skill` Postgres function with row
+ * locking and exact numeric math — no check-then-act races, no double-spend.
  *
  * Requires: Authorization: Bearer a2a_live_xxx
- * Returns: { acquisition_id, skill_id, amount_charged_gbp, credits_remaining_gbp, access_endpoint }
  */
 export async function POST(
   req: NextRequest,
@@ -33,161 +56,29 @@ export async function POST(
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Fetch skill
-    const { data: skill, error: skillError } = await supabase
-      .from('skills')
-      .select('*')
-      .eq('id', skillId)
-      .eq('is_active', true)
-      .single()
+    const { data, error } = await supabase.rpc('purchase_skill', {
+      p_buyer: auth.userId,
+      p_skill: skillId,
+    })
 
-    if (skillError || !skill) {
-      return apiError('Skill not found or inactive', 'NOT_FOUND', 404)
+    if (error) return apiError(error.message, 'INTERNAL_ERROR', 500)
+
+    const res = data as PurchaseRpcResult
+    if (!res?.ok) {
+      const code = res?.code || 'purchase_failed'
+      return apiError(res?.message || 'Purchase failed', code.toUpperCase(), STATUS_BY_CODE[code] || 400)
     }
-
-    // Prevent self-purchase
-    if (skill.seller_id === auth.userId) {
-      return apiError('You cannot purchase your own skill', 'BAD_REQUEST', 400)
-    }
-
-    // Don't take money for an undeliverable skill: it needs either a live
-    // endpoint or a documented prompt/capabilities to be worth anything.
-    if (!skill.api_endpoint && !skill.documentation) {
-      return apiError('This skill has no endpoint or documentation configured yet and cannot be purchased', 'SKILL_UNAVAILABLE', 409)
-    }
-
-    // Check for existing active acquisition
-    const { data: existing } = await supabase
-      .from('acquisitions')
-      .select('id')
-      .eq('buyer_id', auth.userId)
-      .eq('skill_id', skillId)
-      .eq('status', 'active')
-      .single()
-
-    if (existing) {
-      return apiError('You already own this skill', 'CONFLICT', 409)
-    }
-
-    // Fetch buyer's wallet balance
-    const { data: buyerProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('credits_gbp, commission_rate')
-      .eq('id', auth.userId)
-      .single()
-
-    if (profileError || !buyerProfile) {
-      return apiError('Could not retrieve wallet balance', 'INTERNAL_ERROR', 500)
-    }
-
-    const balance = parseFloat(buyerProfile.credits_gbp) || 0
-    const price = parseFloat(skill.price_gbp)
-
-    if (balance < price) {
-      return apiError(
-        `Insufficient credits. Balance: £${balance.toFixed(2)}, Required: £${price.toFixed(2)}. Top up at POST /api/v1/wallet/topup`,
-        'PAYMENT_REQUIRED',
-        402
-      )
-    }
-
-    // --- ATOMIC TRANSACTION ---
-
-    // 1. Deduct from buyer wallet (optimistic lock).
-    // A conditional UPDATE that matches zero rows is NOT an error in supabase-js,
-    // so we must .select() and check the row count — otherwise a racing purchase
-    // silently "succeeds" without deducting (double-spend).
-    const { data: deducted, error: deductError } = await supabase
-      .from('profiles')
-      .update({ credits_gbp: balance - price })
-      .eq('id', auth.userId)
-      .eq('credits_gbp', balance) // optimistic lock — fail if balance changed
-      .select('id')
-
-    if (deductError || !deducted || deducted.length === 0) {
-      return apiError('Payment failed — balance changed, please try again', 'PAYMENT_CONFLICT', 409)
-    }
-
-    // 2. Get seller commission rate
-    const { data: sellerProfile } = await supabase
-      .from('profiles')
-      .select('commission_rate, total_earned')
-      .eq('id', skill.seller_id)
-      .single()
-
-    const commissionRate = sellerProfile?.commission_rate ?? 25
-    const platformFee = price * (commissionRate / 100)
-    const sellerPayout = price - platformFee
-
-    // 3. Create acquisition record
-    const { data: acquisition, error: acqError } = await supabase
-      .from('acquisitions')
-      .insert({
-        buyer_id: auth.userId,
-        skill_id: skillId,
-        pricing_model: skill.pricing_model,
-        amount_paid: price,
-        currency: 'gbp',
-        payment_method: 'credits',
-        status: 'active',
-      })
-      .select('id')
-      .single()
-
-    if (acqError) {
-      // Rollback wallet deduction
-      await supabase
-        .from('profiles')
-        .update({ credits_gbp: balance })
-        .eq('id', auth.userId)
-      return apiError('Failed to create acquisition record', 'DB_ERROR', 500)
-    }
-
-    // 4. Create transaction record
-    await supabase
-      .from('transactions')
-      .insert({
-        acquisition_id: acquisition.id,
-        seller_id: skill.seller_id,
-        skill_id: skillId,
-        gross_amount: price,
-        platform_fee: platformFee,
-        seller_payout: sellerPayout,
-        commission_rate: commissionRate,
-        currency: 'gbp',
-        payment_provider: 'credits',
-        provider_transaction_id: acquisition.id,
-        status: 'completed',
-      })
-
-    // 5. Credit seller earnings
-    const currentEarned = parseFloat(sellerProfile?.total_earned ?? '0') || 0
-    await supabase
-      .from('profiles')
-      .update({ total_earned: currentEarned + sellerPayout })
-      .eq('id', skill.seller_id)
-
-    // 6. Increment skill acquisition counter
-    const { data: currentSkill } = await supabase
-      .from('skills')
-      .select('total_acquisitions')
-      .eq('id', skillId)
-      .single()
-    await supabase
-      .from('skills')
-      .update({ total_acquisitions: (currentSkill?.total_acquisitions ?? 0) + 1 })
-      .eq('id', skillId)
 
     return apiSuccess({
-      acquisition_id: acquisition.id,
+      acquisition_id: res.acquisition_id,
       skill_id: skillId,
-      skill_name: skill.name,
-      amount_charged_gbp: price,
-      platform_fee_gbp: platformFee,
-      credits_remaining_gbp: balance - price,
-      access_endpoint: skill.api_endpoint || null,
+      skill_name: res.skill_name,
+      amount_charged_gbp: res.amount_charged_gbp,
+      platform_fee_gbp: res.platform_fee_gbp,
+      credits_remaining_gbp: res.credits_remaining_gbp,
+      access_endpoint: res.access_endpoint ?? null,
       agent_card_url: `https://a2acolony.com/api/v1/skills/${skillId}/agent-card`,
-      message: `Successfully acquired "${skill.name}". Use access_endpoint to invoke the skill.`,
+      message: `Successfully acquired "${res.skill_name}". Use access_endpoint to invoke the skill.`,
     }, 201)
 
   } catch (err: unknown) {
