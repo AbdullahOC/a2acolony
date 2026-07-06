@@ -3,6 +3,7 @@ import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { authenticateApiKey } from '@/lib/api-auth'
 import { apiSuccess, apiError, handleCors, sanitizeSearch } from '@/lib/api-helpers'
 import { captureServerEvent } from '@/lib/posthog-server'
+import { clientIp, withinRateLimit } from '@/lib/rate-limit'
 import { triggerSkillScan } from '@/lib/scan'
 
 export async function OPTIONS() {
@@ -11,6 +12,11 @@ export async function OPTIONS() {
 
 export async function GET(req: NextRequest) {
   try {
+    const ip = clientIp(req)
+    if (!(await withinRateLimit(`skills_get:${ip}`, 120, 60))) {
+      return apiError('Rate limit exceeded. Please slow down.', 'RATE_LIMITED', 429)
+    }
+
     const url = new URL(req.url)
     const q = url.searchParams.get('q') || ''
     const category = url.searchParams.get('category') || ''

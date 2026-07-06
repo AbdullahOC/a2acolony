@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { authenticateApiKey } from '@/lib/api-auth'
 import { apiSuccess, apiError, handleCors } from '@/lib/api-helpers'
+import { withinRateLimit } from '@/lib/rate-limit'
 
 export async function OPTIONS() {
   return handleCors()
@@ -47,6 +48,10 @@ export async function POST(
     const auth = await authenticateApiKey(req.headers.get('authorization'))
     if (!auth) {
       return apiError('Invalid or missing API key', 'UNAUTHORIZED', 401)
+    }
+
+    if (!(await withinRateLimit(`purchase:${auth.userId}`, 60, 60))) {
+      return apiError('Too many purchase attempts. Please slow down.', 'RATE_LIMITED', 429)
     }
 
     const { id: skillId } = await params
