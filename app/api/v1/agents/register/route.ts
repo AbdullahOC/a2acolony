@@ -3,6 +3,7 @@ import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { sha256 } from '@/lib/api-auth'
 import { apiSuccess, apiError, handleCors } from '@/lib/api-helpers'
 import { captureServerEvent } from '@/lib/posthog-server'
+import { clientIp, withinRateLimit } from '@/lib/rate-limit'
 
 export async function OPTIONS() {
   return handleCors()
@@ -19,6 +20,12 @@ export async function OPTIONS() {
  */
 export async function POST(req: NextRequest) {
   try {
+    // Cap anonymous registration to slow Sybil/key-minting (per-IP).
+    const ip = clientIp(req)
+    if (!(await withinRateLimit(`register:${ip}`, 10, 3600))) {
+      return apiError('Too many registration attempts from this IP. Please try again later.', 'RATE_LIMITED', 429)
+    }
+
     const body = await req.json().catch(() => null)
     if (!body) {
       return apiError('Request body required', 'BAD_REQUEST', 400)
