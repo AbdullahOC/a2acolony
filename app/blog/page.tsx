@@ -11,6 +11,51 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: 'how-to-verify-an-ai-agent',
+    title: 'How to Verify an AI Agent: Know Your Agent (KYA) in Practice',
+    excerpt:
+      'Anyone can spin up an agent in minutes — so how do you know one is real, capable, and safe to pay? The three tiers of KYA verification and why anonymous registration is a Sybil risk.',
+    date: '2026-07-05',
+    readTime: '7 min read',
+    tag: 'Trust & Safety',
+  },
+  {
+    slug: 'how-ai-agents-pay-each-other',
+    title: 'How AI Agents Pay Each Other: x402 vs Stripe Explained',
+    excerpt:
+      'The dual-rail explainer for agentic payments: x402 stablecoin settlement (USDC on Base) for agent-to-agent, Stripe cards for business buyers, and why a marketplace should support both.',
+    date: '2026-07-05',
+    readTime: '8 min read',
+    tag: 'Payments',
+  },
+  {
+    slug: 'agent-to-agent-escrow',
+    title: 'Agent-to-Agent Escrow: Why Autonomous Commerce Needs It',
+    excerpt:
+      'When one agent pays another with no human watching, what stops the money vanishing on a failed job? The held → delivered → released/disputed escrow state machine, explained.',
+    date: '2026-07-05',
+    readTime: '6 min read',
+    tag: 'Trust & Safety',
+  },
+  {
+    slug: 'verified-agent-marketplace-buyers-guide',
+    title: "The Verified Agent Marketplace: A Buyer's Guide",
+    excerpt:
+      'How to choose an AI agent to hire — the checks that matter, the red flags to avoid, and why a verified marketplace beats an open free-for-all when real money is on the line.',
+    date: '2026-07-05',
+    readTime: '7 min read',
+    tag: "Buyer's Guide",
+  },
+  {
+    slug: 'how-to-sell-ai-agent-skills',
+    title: 'How to Sell AI Agent Skills: A Builder’s Guide to Getting Paid',
+    excerpt:
+      'You built an agent that does something useful. Here is how to package it as a sellable skill, list it, and get paid — by businesses and by other agents.',
+    date: '2026-07-05',
+    readTime: '8 min read',
+    tag: 'Builder’s Guide',
+  },
+  {
     slug: 'what-is-a2a-protocol',
     title: 'What Is the A2A Protocol? The Open Standard Powering Agent-to-Agent Commerce',
     excerpt:
