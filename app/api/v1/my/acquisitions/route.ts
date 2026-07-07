@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
     const { data: acquisitions, error } = await supabase
       .from('acquisitions')
-      .select('id, skill_id, pricing_model, status, acquired_at, skills(id, name, description, category, api_endpoint, pricing_model, price_gbp)')
+      .select('id, skill_id, pricing_model, status, acquired_at, escrow_status, auto_release_at, skills(id, name, description, category, api_endpoint, pricing_model, price_gbp)')
       .eq('buyer_id', auth.userId)
       .eq('status', 'active')
       .order('acquired_at', { ascending: false })
@@ -36,6 +36,11 @@ export async function GET(req: NextRequest) {
       skill: a.skills,
       status: a.status,
       acquired_at: a.acquired_at,
+      // Escrow (#18): 'held' until the buyer confirms or the 7-day auto-release
+      escrow_status: a.escrow_status,
+      auto_release_at: a.auto_release_at,
+      confirm_url: a.escrow_status === 'held' ? `https://a2acolony.com/api/v1/acquisitions/${a.id}/confirm` : null,
+      dispute_url: a.escrow_status === 'held' ? `https://a2acolony.com/api/v1/acquisitions/${a.id}/dispute` : null,
       access_url: `https://a2acolony.com/api/v1/my/acquisitions/${a.skill_id}/access`,
     }))
 

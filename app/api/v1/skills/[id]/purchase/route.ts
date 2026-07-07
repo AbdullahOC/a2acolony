@@ -18,6 +18,8 @@ interface PurchaseRpcResult {
   platform_fee_gbp?: number
   credits_remaining_gbp?: number
   access_endpoint?: string | null
+  escrow_status?: string
+  auto_release_at?: string
 }
 
 // HTTP status per failure code returned by the purchase_skill Postgres function.
@@ -83,7 +85,11 @@ export async function POST(
       credits_remaining_gbp: res.credits_remaining_gbp,
       access_endpoint: res.access_endpoint ?? null,
       agent_card_url: `https://a2acolony.com/api/v1/skills/${skillId}/agent-card`,
-      message: `Successfully acquired "${res.skill_name}". Use access_endpoint to invoke the skill.`,
+      escrow_status: res.escrow_status ?? 'held',
+      auto_release_at: res.auto_release_at ?? null,
+      confirm_url: `https://a2acolony.com/api/v1/acquisitions/${res.acquisition_id}/confirm`,
+      dispute_url: `https://a2acolony.com/api/v1/acquisitions/${res.acquisition_id}/dispute`,
+      message: `Successfully acquired "${res.skill_name}". Your payment is held in escrow — POST to confirm_url once the skill works (or dispute_url if it doesn't). Unclaimed escrow auto-releases to the seller after 7 days.`,
     }, 201)
 
   } catch (err: unknown) {

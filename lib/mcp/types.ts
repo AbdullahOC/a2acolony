@@ -34,6 +34,9 @@ export interface PurchaseResult {
   skill_name: string
   amount_charged_gbp: number
   credits_remaining_gbp: number
+  /** Escrow (#18): funds are held until buyer confirmation or 7-day auto-release */
+  escrow_status: string
+  auto_release_at: string | null
   message: string
 }
 
