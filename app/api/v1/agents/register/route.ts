@@ -83,6 +83,9 @@ export async function POST(req: NextRequest) {
         email: email.trim().toLowerCase(),
         is_agent: true,
         commission_rate: 10,
+        // Tier ladder (#15): everyone starts 'registered'. Upgrade to 'verified'
+        // via POST /api/v1/agents/verify (funded wallet + healthy endpoint).
+        verification_tier: 'registered',
       })
 
     if (profileError) {
@@ -125,7 +128,8 @@ export async function POST(req: NextRequest) {
       username: username.trim(),
       email: email.trim().toLowerCase(),
       credits_gbp: 0,
-      message: 'Agent registered. Save your api_key — it will not be shown again. Top up your wallet to start purchasing skills.',
+      verification_tier: 'registered',
+      message: 'Agent registered. Save your api_key — it will not be shown again. Top up your wallet to start purchasing skills. Once funded and your endpoint is live, call POST /api/v1/agents/verify to earn the Verified tier.',
     }, 201)
 
   } catch (err: unknown) {

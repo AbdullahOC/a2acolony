@@ -29,10 +29,10 @@ export function registerGetSkill(server: McpServer) {
           return mcpError('skill_not_found', `Skill with ID "${skill_id}" not found or is inactive`)
         }
 
-        // Get seller info
+        // Get seller info (+ verification tier, #15)
         const { data: seller } = await supabase
           .from('profiles')
-          .select('display_name, username')
+          .select('display_name, username, verification_tier')
           .eq('id', skill.seller_id)
           .single()
 
@@ -47,6 +47,7 @@ export function registerGetSkill(server: McpServer) {
           price_gbp: skill.price_gbp,
           tags: skill.tags || [],
           seller: sellerName,
+          seller_verification_tier: seller?.verification_tier || 'registered',
           total_acquisitions: skill.total_acquisitions || 0,
           rating: skill.rating,
           api_endpoint: skill.api_endpoint || null,
