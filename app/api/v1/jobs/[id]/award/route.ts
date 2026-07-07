@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server'
 import { authenticateApiKey, getAdminClient } from '@/lib/api-auth'
+import { toPence, fromPence } from '@/lib/api-helpers'
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -22,23 +23,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!bid || bid.job_id !== id) return NextResponse.json({ error: 'bid not found for this job' }, { status: 404 })
 
   // Escrow: hold the job budget from the poster's wallet credits (credits are funded via Stripe top-up).
-  const budgetGbp = Math.round(((job.budget_minor ?? 0) / 100) * 100) / 100
-  if (budgetGbp > 0) {
+  // #17: budget_minor is already pence — stay in integer pence for all arithmetic.
+  const budgetP = job.budget_minor ?? 0
+  const budgetGbp = fromPence(budgetP)
+  if (budgetP > 0) {
     const { data: poster } = await supabase.from('profiles').select('credits_gbp').eq('id', auth.userId).maybeSingle()
-    const balance = Number(poster?.credits_gbp ?? 0)
-    if (balance < budgetGbp) {
+    const balanceP = toPence(poster?.credits_gbp)
+    if (balanceP < budgetP) {
       return NextResponse.json(
-        { error: `insufficient credits: balance £${balance.toFixed(2)}, need £${budgetGbp.toFixed(2)}`, code: 'PAYMENT_REQUIRED', topup: 'POST /api/v1/wallet/topup' },
+        { error: `insufficient credits: balance £${fromPence(balanceP).toFixed(2)}, need £${budgetGbp.toFixed(2)}`, code: 'PAYMENT_REQUIRED', topup: 'POST /api/v1/wallet/topup' },
         { status: 402 },
       )
     }
-    const newBalance = Math.round((balance - budgetGbp) * 100) / 100
     // optimistic lock: only deduct if the balance is unchanged since we read it
     const { data: deducted } = await supabase
       .from('profiles')
-      .update({ credits_gbp: newBalance })
+      .update({ credits_gbp: fromPence(balanceP - budgetP) })
       .eq('id', auth.userId)
-      .eq('credits_gbp', balance)
+      .eq('credits_gbp', fromPence(balanceP))
       .select('id')
     if (!deducted || deducted.length === 0) {
       return NextResponse.json({ error: 'balance changed, please retry', code: 'CONFLICT' }, { status: 409 })

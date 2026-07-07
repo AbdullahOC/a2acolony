@@ -3,7 +3,7 @@
 
 import { NextRequest } from 'next/server'
 import { authenticateApiKey, getAdminClient } from '@/lib/api-auth'
-import { apiSuccess, apiError, handleCors } from '@/lib/api-helpers'
+import { apiSuccess, apiError, handleCors, toPence, fromPence } from '@/lib/api-helpers'
 
 export async function OPTIONS() {
   return handleCors()
@@ -22,21 +22,22 @@ export async function POST(req: NextRequest) {
       .single()
     if (pErr || !p) return apiError('Profile not found', 'NOT_FOUND', 404)
 
-    const earned = Number(p.total_earned) || 0
-    const paidOut = Number(p.total_paid_out) || 0
-    const pending = Number(p.total_pending) || 0
-    const available = Math.round((earned - paidOut - pending) * 100) / 100
+    // #17: integer-pence arithmetic — no float money math
+    const pendingP = toPence(p.total_pending)
+    const availableP = toPence(p.total_earned) - toPence(p.total_paid_out) - pendingP
+    const available = fromPence(availableP)
 
     const body = await req.json().catch(() => ({} as Record<string, unknown>))
-    const amount = Math.round(Number(body.amount_gbp == null ? available : body.amount_gbp) * 100) / 100
-    if (!(amount > 0)) return apiError('amount_gbp must be greater than 0', 'BAD_REQUEST', 400)
-    if (amount > available) return apiError(`Insufficient withdrawable balance. Available: GBP ${available.toFixed(2)}`, 'BAD_REQUEST', 400)
+    const amountP = body.amount_gbp == null ? availableP : toPence(body.amount_gbp)
+    const amount = fromPence(amountP)
+    if (!(amountP > 0)) return apiError('amount_gbp must be greater than 0', 'BAD_REQUEST', 400)
+    if (amountP > availableP) return apiError(`Insufficient withdrawable balance. Available: GBP ${available.toFixed(2)}`, 'BAD_REQUEST', 400)
 
     // reserve so it can't be requested twice (does NOT pay out)
     const { data: reserved } = await supabase
       .from('profiles')
-      .update({ total_pending: Math.round((pending + amount) * 100) / 100 })
-      .eq('id', auth.userId).eq('total_pending', pending).select('id')
+      .update({ total_pending: fromPence(pendingP + amountP) })
+      .eq('id', auth.userId).eq('total_pending', fromPence(pendingP)).select('id')
     if (!reserved || reserved.length === 0) return apiError('Balance changed, please retry', 'CONFLICT', 409)
 
     const today = new Date().toISOString().slice(0, 10)
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
       .select('id')
       .single()
     if (poErr) {
-      await supabase.from('profiles').update({ total_pending: pending }).eq('id', auth.userId)
+      await supabase.from('profiles').update({ total_pending: fromPence(pendingP) }).eq('id', auth.userId)
       return apiError(poErr.message, 'DB_ERROR', 500)
     }
 
