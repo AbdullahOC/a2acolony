@@ -1,6 +1,6 @@
 # A2A Colony — Session Handover
 
-_Last updated: 2026-07-07. Purpose: let a fresh session pick up cold._
+_Last updated: 2026-07-07 (session b). Purpose: let a fresh session pick up cold._
 
 ## 1. Snapshot & how to operate
 
@@ -15,7 +15,15 @@ _Last updated: 2026-07-07. Purpose: let a fresh session pick up cold._
 
 **Previous sessions:** PR #12 (double-spend + PostgREST filter injection), #13 (5 SEO blog pages), #20 (atomic `purchase_skill` RPC, migration 005), #21 (rate limiting, migration 006), #22 (IDOR: RPCs locked to service_role, migration 007).
 
-**This session (2026-07-07):**
+**Session 2026-07-07 (b) — #19 critical write-lockdown (migration `010`, applied to prod):**
+- **Found & closed a LIVE hole.** The web UI uses the anon key + user JWT (role `authenticated`) to read `profiles`/`skills` — so the "everything is service-role, RLS inert" assumption below was **wrong for the web app**. Two tables had permissive write policies **and** table-wide write grants, so any logged-in user could edit their own row's protected columns straight through `/rest/v1`. Verified exploitable (role-switched UPDATE, rolled back):
+  - `profiles`: `credits_gbp → 999999`, `is_admin → true`, `verification_tier → founding` (money-minting + self-admin).
+  - `skills`: `is_active → true`, `scan_status → passed`, `risk_score → 0`, `rating → 5` (bypass the SkillSpector scan gate + fake trust).
+- **Fix (`010_lockdown_client_writes`):** `revoke insert,update,delete on profiles from anon,authenticated` (no legit JWT write path — all profile writes use the service-role/admin client); `revoke update,delete on skills` (keep JWT INSERT for web `createSkill`); replace the `FOR ALL "Own skills"` policy with a read policy + an INSERT `WITH CHECK (seller_id=auth.uid() AND is_active IS NOT TRUE AND scan_status='queued')`; `alter skills.is_active set default false`. **Zero app changes** — `createSkill` already inserts `is_active:false, scan_status:'queued'`; agent-API skill insert is service-role (bypasses RLS). Reads untouched.
+- **Verified post-migration (all rolled back):** profile-mint DENIED, skill-ungate DENIED, malicious live-insert BLOCKED by the policy, legit createSkill-shaped insert ALLOWED; authenticated still reads the public catalog (106 active skills) + own profile. `get_advisors` security: **no new findings**.
+- Shipped as **PR #29** (migration file + this handover). The DB fix was applied directly via MCP so it was live before merge; the PR is source-control tracking.
+
+**Earlier 2026-07-07 session:**
 - **PR #24** `aa4b441` — **#15 verification tiers** (migration `008`). `profiles.verification_tier`: `registered` (default, instant signup) → `verified` (self-serve via **`POST /api/v1/agents/verify`**: funded wallet/payout details on file + endpoint answers an SSRF-guarded health probe, rate-limited 10/h) → `founding` (manual: the admin is_verified toggle now syncs the tier; only founding shows the badge). Tier surfaced as `seller_verification_tier` in `browse_skills`/`get_skill` (MCP), `GET /api/v1/skills(/[id])` (REST), and a seller line on the skill page.
 - **PR #25** `ff66a3c` — **#18 escrow with disputes** (migration `009`). See §3 for the full machine.
 - **PR #26** `6facae6` — **#17 residuals closed.** `toPence`/`fromPence` in `lib/api-helpers.ts`; cashout + jobs/award now integer-pence; check_balance drops parseFloat. Leftover Math.round-guarded float spots (jobs/complete settlement, crypto-scan credit) ride with #19, which turns those into SQL anyway.
@@ -37,6 +45,13 @@ States on `acquisitions`: `held → released` (buyer sign-off / 7-day auto / adm
 - The whole state machine was exercised **against prod** with real writes rolled back via the DO-block trick (§6): hold, early-sweep block, exact 25%-fee release, double-release block, dispute freezing a due sweep, refund making buyer whole. Zero rows persisted.
 
 ## 4. #19 — RLS: how a senior DB architect would design it
+
+**STATUS (2026-07-07 session b):** The urgent part is DONE. The real risk in #19 was never the reads (the web app already runs them under user-JWT) — it was **writes**: over-broad grants + permissive policies let JWT users mutate protected columns. Migration `010` closed the two proven money/trust holes (`profiles`, `skills`) per principle 2 below. **What remains for #19 is an audit-and-lock pass over the OTHER tables that still have JWT write policies**, using the exact same method (role-switch UPDATE test → revoke/scope):
+- `jobs` (poster can UPDATE own row, all columns — check reward/status can't be gamed after bids), `reviews` (INSERT own — is a purchase required?), `agent_profiles` (INSERT/UPDATE own, all columns — any reputation/trust cols?). None are money/admin-critical like `profiles` was, but they're the same class.
+- Service-role-only tables (`job_bids`, `job_evaluations`, `company_cashouts`, `refund_requests`, `work_receipts`, `admin_settings`, etc.) show RLS-enabled-no-policy in the advisor — **correct by design** (fully locked; no leak).
+- Decide on the two SECURITY DEFINER WARNs: `verify_receipt` (anon-callable public receipt lookup — probably intended) and `get_my_profile` (confirmed filters by `auth.uid()`, safe). Revoke from anon/authenticated if not wanted.
+
+The read-side design below is still the eventual end-state (per-command policies everywhere), but it is **defense-in-depth now, not a live gap** — do it incrementally, writes-first.
 
 **Goal:** make the database the backstop for "who can touch which row," so a forgotten app-side filter fails safe instead of leaking. Keep app filters too (defense in depth) — RLS is added *underneath*, not instead.
 
@@ -69,7 +84,7 @@ States on `acquisitions`: `held → released` (buyer sign-off / 7-day auto / adm
 
 ## 5. What's left, prioritized
 
-**Engineering:** only **#19** (see §4).
+**Engineering:** **#19 remainder** only (see §4 STATUS). The critical write-lockdown shipped (migration 010); what's left is the lower-severity audit-and-lock pass over `jobs`/`reviews`/`agent_profiles` and the two SECURITY DEFINER WARN decisions. Not on fire.
 
 **Owner-only actions (can't be done from a session):**
 - ~~Leaked-password protection~~ — **not actionable**: it's a Supabase Pro-plan feature and the project is on the free plan (owner tried 2026-07-07, dashboard rejects it). The advisor WARN is permanent until a plan upgrade; ignore it, and don't re-flag it to the owner. Low value here anyway — agents get 32-char random passwords.
@@ -80,7 +95,8 @@ States on `acquisitions`: `held → released` (buyer sign-off / 7-day auto / adm
 ## 6. Gotchas / things learned the hard way
 
 - **`transactions.status` constraint** allows only `pending|paid_out|refunded|disputed`. Both the skills path (PR #20) and the jobs path (PR #25) were silently dropping settlement rows with `'completed'`. If you add a settlement write anywhere, check the constraint first.
-- **Everything runs as service-role today** → RLS bypassed; all authz is app code. Always filter by user id on any new query. (#19 fixes.)
+- **Two client identities, not one.** Agent-facing `/api/v1/*` routes use the **service-role** client (RLS bypassed — app code is the authz). The **web UI** (`app/**` pages, `app/actions/*`, `lib/supabase-server.ts`) uses the **anon key + user JWT** (`authenticated` role — RLS + grants ARE the authz). Know which client a route uses before you reason about safety.
+- **The write-grant trap (how the 010 hole happened):** a table with RLS + a permissive `FOR ALL`/`FOR UPDATE USING(owner)` policy + table-wide `GRANT UPDATE` lets a JWT user rewrite ANY column of their own row (money, admin, trust). RLS `USING` gates *which rows*, not *which columns* — column safety comes from **grants** (`GRANT UPDATE (col,...)`) and INSERT `WITH CHECK`. Test any owner-writable table with a role-switched UPDATE (see §6 DO-block) before trusting it.
 - **After ANY DDL / new function, run `get_advisors` (security).** New SECURITY DEFINER functions must be revoked from `anon, authenticated, public` and granted to `service_role` only. Verified again this session: the three escrow RPCs don't appear in the advisor's executable warnings.
 - **Money math:** DB columns are `numeric(10,2)`. Do money math in SQL; app-side leftovers use `toPence`/`fromPence` from `lib/api-helpers.ts` — never raw float arithmetic, never `parseFloat`.
 - **Testing money logic safely:** wrap real writes in `DO $$ ... raise exception 'RESULT: %', ...; $$` — the raise rolls everything back (verified twice now: 0 rows persisted). Full escrow test lives in the PR #25 description.
@@ -95,5 +111,5 @@ States on `acquisitions`: `held → released` (buyer sign-off / 7-day auto / adm
 
 1. Read this file. Confirm main is green: `gh api repos/AbdullahOC/a2acolony/commits/main/status`.
 2. Ask the owner whether the prod validation purchase (§5) happened; if yes, check `acquisitions.escrow_status` flowed held→released correctly.
-3. Start **#19** exactly per §4 — policies-first migration (inert), then flip reads table-by-table on a branch DB.
+3. **#19 remainder** per §4 STATUS: role-switch-UPDATE-test `jobs`/`reviews`/`agent_profiles` (§6 DO-block), revoke/column-scope any that let a JWT user rewrite protected columns — same pattern as migration 010. Then the incremental read-side policies below as defense-in-depth.
 4. Run `get_advisors` after every DDL. Update this file before you stop.
