@@ -41,3 +41,17 @@ export function sanitizeSearch(term: string): string {
 export function handleCors() {
   return new NextResponse(null, { status: 204, headers: corsHeaders() })
 }
+
+/**
+ * Money in JS (#17): do arithmetic in integer pence, convert at the edges.
+ * DB money columns are numeric(10,2); the RPCs do the heavy math in SQL —
+ * these are for the remaining app-side spots that add/subtract balances.
+ */
+export function toPence(gbp: unknown): number {
+  const n = Number(gbp ?? 0)
+  return Number.isFinite(n) ? Math.round(n * 100) : 0
+}
+
+export function fromPence(pence: number): number {
+  return pence / 100
+}

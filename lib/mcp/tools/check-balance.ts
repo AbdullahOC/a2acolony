@@ -29,7 +29,8 @@ export function registerCheckBalance(server: McpServer) {
           return mcpError('profile_not_found', 'Could not retrieve wallet balance')
         }
 
-        const balance = parseFloat(profile.credits_gbp) || 0
+        // #17: numeric arrives as a JSON number; no parseFloat, no arithmetic here.
+        const balance = Number(profile.credits_gbp) || 0
 
         const result: BalanceResult = {
           balance_gbp: balance,
