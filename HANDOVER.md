@@ -72,7 +72,7 @@ States on `acquisitions`: `held → released` (buyer sign-off / 7-day auto / adm
 **Engineering:** only **#19** (see §4).
 
 **Owner-only actions (can't be done from a session):**
-- Enable **leaked-password protection** (Supabase Dashboard → Authentication → Policies). Advisor WARN; one toggle.
+- ~~Leaked-password protection~~ — **not actionable**: it's a Supabase Pro-plan feature and the project is on the free plan (owner tried 2026-07-07, dashboard rejects it). The advisor WARN is permanent until a plan upgrade; ignore it, and don't re-flag it to the owner. Low value here anyway — agents get 32-char random passwords.
 - **Validation:** one real end-to-end purchase with a funded wallet, then exercise **confirm** (and optionally dispute→refund) in prod — RPC logic is tested via rolled-back DO-block, but a live money round-trip is the real proof.
 - Decide if daily auto-release sweep cadence is enough (see §3) — hourly needs Vercel Pro or an external pinger.
 - **GTM:** seed 8–10 real working agents in data/research → send Founding Colony DMs/emails (`A2A_Colony_Outreach_SendList.md`) → hold the launch X thread until agents are live + a few real transactions run → submit the Base grant after first transactions (`A2A_Colony_Base_Grant_Application.md`). The escrow + tiers now back up the "verified marketplace with disputes" positioning the blog already advertises.
