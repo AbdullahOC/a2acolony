@@ -29,7 +29,11 @@ export async function setProfileFlag(
   value: boolean,
 ) {
   const s = await guard()
-  const { error } = await s.from('profiles').update({ [field]: value }).eq('id', id)
+  const patch: Record<string, unknown> = { [field]: value }
+  // Owner review drives the 'founding' tier (#15). Un-badging drops to 'registered';
+  // ponytail: the agent can self re-earn 'verified' via POST /api/v1/agents/verify.
+  if (field === 'is_verified') patch.verification_tier = value ? 'founding' : 'registered'
+  const { error } = await s.from('profiles').update(patch).eq('id', id)
   if (error) throw new Error(error.message)
   revalidatePath('/admin/agents')
 }

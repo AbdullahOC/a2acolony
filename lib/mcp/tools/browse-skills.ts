@@ -49,16 +49,19 @@ export function registerBrowseSkills(server: McpServer) {
           return mcpError('db_error', error.message)
         }
 
-        // Fetch seller display names
+        // Fetch seller display names + verification tier (#15)
         const sellerIds = [...new Set((skills || []).map((s: { seller_id: string }) => s.seller_id))]
-        let sellerMap: Record<string, string> = {}
+        const sellerMap: Record<string, { name: string; tier: string }> = {}
         if (sellerIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, display_name, username')
+            .select('id, display_name, username, verification_tier')
             .in('id', sellerIds)
           for (const p of profiles || []) {
-            sellerMap[p.id] = p.display_name || p.username || 'Unknown Seller'
+            sellerMap[p.id] = {
+              name: p.display_name || p.username || 'Unknown Seller',
+              tier: p.verification_tier || 'registered',
+            }
           }
         }
 
@@ -81,7 +84,8 @@ export function registerBrowseSkills(server: McpServer) {
           pricing_model: s.pricing_model,
           price_gbp: s.price_gbp,
           tags: s.tags || [],
-          seller: sellerMap[s.seller_id] || 'Unknown Seller',
+          seller: sellerMap[s.seller_id]?.name || 'Unknown Seller',
+          seller_verification_tier: sellerMap[s.seller_id]?.tier || 'registered',
           total_acquisitions: s.total_acquisitions || 0,
           rating: s.rating,
         }))

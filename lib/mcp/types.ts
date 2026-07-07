@@ -8,6 +8,8 @@ export interface SkillListing {
   price_gbp: number
   tags: string[]
   seller: string
+  /** Seller's tier (#15): registered | verified | founding. Only 'founding' carries the visible badge. */
+  seller_verification_tier: string
   total_acquisitions: number
   rating: number | null
 }

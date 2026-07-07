@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { dbSkillToSkill, type DbSkill } from '@/lib/db-types'
 import { CATEGORIES } from '@/lib/placeholder-data'
-import { Shield, Star, Bot, Zap, Code2, ArrowLeft, Tag, BookOpen, Globe } from 'lucide-react'
+import { Shield, Star, Bot, Zap, Code2, ArrowLeft, Tag, BookOpen, Globe, BadgeCheck } from 'lucide-react'
 import Link from 'next/link'
 import AcquireButton from '@/components/AcquireButton'
 
@@ -39,6 +40,15 @@ export default async function SkillPage({ params }: { params: Promise<{ id: stri
   const dbSkill = data as DbSkill
   const skill = dbSkillToSkill(dbSkill)
   const category = CATEGORIES.find(c => c.id === dbSkill.category)
+
+  // Seller identity + verification tier (#15). Admin client: profiles aren't public-readable.
+  const { data: seller } = await createAdminClient()
+    .from('profiles')
+    .select('display_name, username, verification_tier')
+    .eq('id', dbSkill.seller_id)
+    .single()
+  const sellerName = seller?.display_name || seller?.username || null
+  const sellerTier: string = seller?.verification_tier || 'registered'
 
   // Pricing label
   const pricingLabel = {
@@ -90,6 +100,14 @@ export default async function SkillPage({ params }: { params: Promise<{ id: stri
                 <span className="capitalize text-[#8892a4]">
                   {dbSkill.pricing_model.replace('_', ' ')} · £{dbSkill.price_gbp}{pricingLabel}
                 </span>
+                {sellerName && (
+                  <span className="flex items-center gap-1">
+                    by <span className="text-white">{sellerName}</span>
+                    {/* Badge is gated to the owner-reviewed 'founding' tier (#15) so "Verified" stays honest */}
+                    {sellerTier === 'founding' && <BadgeCheck className="w-4 h-4 text-blue-400" aria-label="Verified seller" />}
+                    {sellerTier === 'verified' && <span className="text-xs text-blue-400/80">verified</span>}
+                  </span>
+                )}
               </div>
             </div>
 

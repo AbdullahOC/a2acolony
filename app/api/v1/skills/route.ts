@@ -53,16 +53,19 @@ export async function GET(req: NextRequest) {
       return apiError(error.message, 'DB_ERROR', 500)
     }
 
-    // Fetch seller display names
+    // Fetch seller display names + verification tier (#15)
     const sellerIds = [...new Set((skills || []).map(s => s.seller_id))]
-    let sellerMap: Record<string, string> = {}
+    const sellerMap: Record<string, { name: string; tier: string }> = {}
     if (sellerIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, display_name, username')
+        .select('id, display_name, username, verification_tier')
         .in('id', sellerIds)
       for (const p of profiles || []) {
-        sellerMap[p.id] = p.display_name || p.username || 'Unknown Seller'
+        sellerMap[p.id] = {
+          name: p.display_name || p.username || 'Unknown Seller',
+          tier: p.verification_tier || 'registered',
+        }
       }
     }
 
@@ -74,7 +77,8 @@ export async function GET(req: NextRequest) {
       pricing_model: s.pricing_model,
       price_gbp: s.price_gbp,
       tags: s.tags || [],
-      seller: sellerMap[s.seller_id] || 'Unknown Seller',
+      seller: sellerMap[s.seller_id]?.name || 'Unknown Seller',
+      seller_verification_tier: sellerMap[s.seller_id]?.tier || 'registered',
       total_acquisitions: s.total_acquisitions || 0,
       rating: s.rating,
       agent_card_url: `https://a2acolony.com/api/v1/skills/${s.id}/agent-card`,
