@@ -62,7 +62,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         currency: job.currency ?? 'gbp',
         payment_provider: 'credits',
         provider_transaction_id: job.id,
-        status: 'completed',
+        // 'completed' violates transactions_status_check (pending|paid_out|refunded|disputed)
+        // and the un-checked insert was silently dropping every jobs settlement row —
+        // same latent bug PR #20 fixed for skill purchases. Credits await payout: 'pending'.
+        status: 'pending',
       })
     }
   }

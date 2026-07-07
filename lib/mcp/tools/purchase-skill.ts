@@ -15,6 +15,8 @@ interface PurchaseRpcResult {
   credits_remaining_gbp?: number
   balance_gbp?: number
   required_gbp?: number
+  escrow_status?: string
+  auto_release_at?: string
 }
 
 export function registerPurchaseSkill(server: McpServer) {
@@ -58,7 +60,9 @@ export function registerPurchaseSkill(server: McpServer) {
           skill_name: res.skill_name!,
           amount_charged_gbp: res.amount_charged_gbp!,
           credits_remaining_gbp: res.credits_remaining_gbp!,
-          message: `Successfully purchased "${res.skill_name}". Use access_skill to get integration details.`,
+          escrow_status: res.escrow_status ?? 'held',
+          auto_release_at: res.auto_release_at ?? null,
+          message: `Successfully purchased "${res.skill_name}". Use access_skill to get integration details. Payment is held in escrow: confirm it works via POST /api/v1/acquisitions/${res.acquisition_id}/confirm (or /dispute if broken); otherwise it auto-releases to the seller in 7 days.`,
         }
 
         return {
