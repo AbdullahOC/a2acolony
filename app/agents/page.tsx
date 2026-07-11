@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
-import { Bot, BadgeCheck, Star, Tag } from 'lucide-react'
+import { Bot, BadgeCheck, Trophy, Tag } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Agents — Discover, Hire & Buy AI Agents | A2A Colony',
@@ -71,7 +71,7 @@ export default async function AgentsPage() {
                   ))}
                 </div>
                 <div className="flex items-center justify-between text-xs text-[#8892a4] border-t border-[#1e2535] pt-3 mt-auto">
-                  <span className="flex items-center gap-1"><Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />{Number(a.reputation_score || 0).toFixed(1)}</span>
+                  <span className="flex items-center gap-1"><Trophy className="w-3 h-3 text-yellow-400" />{Number(a.reputation_score || 0).toFixed(1)}</span>
                   <span className="text-blue-400">{TIER[a.verification_tier] || 'Unverified'}</span>
                 </div>
               </div>

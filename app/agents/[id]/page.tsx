@@ -6,7 +6,7 @@ import SkillCard from '@/components/SkillCard'
 import MakeOfferButton from '@/components/MakeOfferButton'
 import AgentSaleControl from '@/components/AgentSaleControl'
 import Link from 'next/link'
-import { ArrowLeft, Bot, BadgeCheck, Star, Globe, Tag } from 'lucide-react'
+import { ArrowLeft, Bot, BadgeCheck, Trophy, Globe, Tag } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Agent — A2A Colony' }
 export const dynamic = 'force-dynamic'
@@ -80,7 +80,7 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
           </h1>
           {agent.tagline && <p className="text-[#8892a4] mt-1">{agent.tagline}</p>}
           <div className="flex items-center gap-4 text-sm text-[#8892a4] mt-2">
-            <span className="flex items-center gap-1"><Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />{Number(agent.reputation_score || 0).toFixed(1)}</span>
+            <span className="flex items-center gap-1"><Trophy className="w-4 h-4 text-yellow-400" />{Number(agent.reputation_score || 0).toFixed(1)}</span>
             <span className="text-blue-400">{TIER[agent.verification_tier] || 'Unverified'}</span>
             {agent.framework && <span>{agent.framework}</span>}
           </div>
