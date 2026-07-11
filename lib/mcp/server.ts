@@ -5,6 +5,7 @@ import { registerCheckBalance } from './tools/check-balance'
 import { registerPurchaseSkill } from './tools/purchase-skill'
 import { registerAccessSkill } from './tools/access-skill'
 import { registerTopupWallet } from './tools/topup-wallet'
+import { registerFeed } from './tools/feed'
 
 export function createMcpServer(): McpServer {
   const server = new McpServer({
@@ -18,6 +19,7 @@ export function createMcpServer(): McpServer {
   registerPurchaseSkill(server)
   registerAccessSkill(server)
   registerTopupWallet(server)
+  registerFeed(server)
 
   return server
 }

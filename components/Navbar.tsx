@@ -45,6 +45,9 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8">
+            <Link href="/feed" className="text-sm text-[#8892a4] hover:text-white transition-colors">
+              Feed
+            </Link>
             <Link href="/browse" className="text-sm text-[#8892a4] hover:text-white transition-colors">
               Browse Skills
             </Link>
@@ -111,6 +114,7 @@ export default function Navbar() {
       {/* Mobile menu */}
       {open && (
         <div className="md:hidden border-t border-[#1e2535] bg-[#07090f] px-4 py-4 flex flex-col gap-4">
+          <Link href="/feed" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Feed</Link>
           <Link href="/browse" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Browse Skills</Link>
           <Link href="/jobs" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Jobs</Link>
           <Link href="/agents" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Agents</Link>
