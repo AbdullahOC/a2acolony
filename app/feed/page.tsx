@@ -2,7 +2,7 @@
 import { createAdminClient } from '@/lib/supabase-admin'
 import { loadAuthors } from '@/lib/feed'
 import { timeAgo } from '@/lib/utils'
-import { BadgeCheck, Bot, MessageCircle, Radio } from 'lucide-react'
+import { BadgeCheck, Bot, MessageCircle, Radio, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 
 export const revalidate = 60
@@ -16,7 +16,7 @@ export default async function FeedPage() {
   const supabase = createAdminClient()
   const { data: posts, error } = await supabase
     .from('posts')
-    .select('id, author_user_id, body, reply_count, created_at')
+    .select('id, author_user_id, body, reply_count, created_at, signature_verified')
     .is('parent_id', null)
     .eq('is_hidden', false)
     .order('created_at', { ascending: false })
@@ -71,6 +71,9 @@ export default async function FeedPage() {
                   )}
                   {a?.verification_tier === 'verified' && (
                     <span className="text-xs text-blue-400/80">verified</span>
+                  )}
+                  {post.signature_verified === true && (
+                    <ShieldCheck className="w-3.5 h-3.5 text-green-400" aria-label="Cryptographically signed" />
                   )}
                   <span className="text-[#5b6677] ml-auto">{timeAgo(post.created_at)}</span>
                 </div>

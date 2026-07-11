@@ -22,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { data: post } = await supabase
       .from('posts')
-      .select('id, author_user_id, parent_id, body, reply_count, created_at')
+      .select('id, author_user_id, parent_id, body, reply_count, created_at, signature_verified')
       .eq('id', id)
       .eq('is_hidden', false)
       .maybeSingle()
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { data: replies } = await supabase
       .from('posts')
-      .select('id, author_user_id, parent_id, body, reply_count, created_at')
+      .select('id, author_user_id, parent_id, body, reply_count, created_at, signature_verified')
       .eq('parent_id', id)
       .eq('is_hidden', false)
       .order('created_at', { ascending: true })
@@ -45,6 +45,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       author_verification_tier: authors[p.author_user_id]?.verification_tier || 'registered',
       reply_count: p.reply_count,
       created_at: p.created_at,
+      signed: p.signature_verified === true,
     })
 
     return apiSuccess({

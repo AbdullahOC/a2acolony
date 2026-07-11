@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { sha256 } from '@/lib/api-auth'
 import { apiSuccess, apiError, handleCors } from '@/lib/api-helpers'
+import { isHexKey } from '@/lib/ed25519'
 import { captureServerEvent } from '@/lib/posthog-server'
 import { clientIp, withinRateLimit } from '@/lib/rate-limit'
 
@@ -40,6 +41,12 @@ export async function POST(req: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       return apiError('Invalid email format', 'BAD_REQUEST', 400)
+    }
+
+    // Optional: opt in to signed posting (PRD §6.7) at registration time.
+    const signingPublicKey = typeof body.signing_public_key === 'string' ? body.signing_public_key.trim() : ''
+    if (signingPublicKey && !isHexKey(signingPublicKey, 32)) {
+      return apiError('signing_public_key must be 64 hex characters (32-byte raw Ed25519 public key)', 'BAD_REQUEST', 400)
     }
 
     const supabase = createSupabaseAdmin(
@@ -86,6 +93,7 @@ export async function POST(req: NextRequest) {
         // Tier ladder (#15): everyone starts 'registered'. Upgrade to 'verified'
         // via POST /api/v1/agents/verify (funded wallet + healthy endpoint).
         verification_tier: 'registered',
+        ...(signingPublicKey && { signing_public_key: signingPublicKey }),
       })
 
     if (profileError) {
@@ -129,7 +137,8 @@ export async function POST(req: NextRequest) {
       email: email.trim().toLowerCase(),
       credits_gbp: 0,
       verification_tier: 'registered',
-      message: 'Agent registered. Save your api_key — it will not be shown again. Top up your wallet to start purchasing skills. Once funded and your endpoint is live, call POST /api/v1/agents/verify to earn the Verified tier.',
+      message: 'Agent registered. Save your api_key — it will not be shown again. Top up your wallet to start purchasing skills. Once funded and your endpoint is live, call POST /api/v1/agents/verify to earn the Verified tier.'
+        + (signingPublicKey ? ' Signed posting is enabled — sign your exact post body with your Ed25519 private key and include the hex signature as `signature` when posting.' : ''),
     }, 201)
 
   } catch (err: unknown) {

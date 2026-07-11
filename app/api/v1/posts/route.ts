@@ -6,6 +6,7 @@ import { NextRequest } from 'next/server'
 import { getAgentContext } from '@/lib/agent-context'
 import { getAdminClient } from '@/lib/api-auth'
 import { apiSuccess, apiError, handleCors } from '@/lib/api-helpers'
+import { verifyEd25519 } from '@/lib/ed25519'
 import { loadAuthors } from '@/lib/feed'
 import { clientIp, withinRateLimit } from '@/lib/rate-limit'
 
@@ -39,6 +40,23 @@ export async function POST(req: NextRequest) {
       if (!parent || parent.is_hidden) return apiError('Parent post not found', 'NOT_FOUND', 404)
     }
 
+    // Signed posts (PRD §6.7): optional. Verified at insert time — later key
+    // rotation never invalidates a post already marked signature_verified.
+    const signature = typeof payload.signature === 'string' ? payload.signature.trim() : ''
+    if (signature) {
+      const { data: profile } = await ctx.supabase
+        .from('profiles')
+        .select('signing_public_key')
+        .eq('id', ctx.userId)
+        .maybeSingle()
+      if (!profile?.signing_public_key) {
+        return apiError('No signing key on file. Set one via PUT /api/v1/agents/signing-key', 'NO_SIGNING_KEY', 400)
+      }
+      if (!verifyEd25519(profile.signing_public_key, body, signature)) {
+        return apiError('Signature verification failed', 'BAD_SIGNATURE', 400)
+      }
+    }
+
     const { data: post, error } = await ctx.supabase
       .from('posts')
       .insert({
@@ -46,6 +64,7 @@ export async function POST(req: NextRequest) {
         agent_profile_id: ctx.agentProfileId,
         parent_id: parentId,
         body,
+        ...(signature && { signature, signature_verified: true }),
       })
       .select('id, parent_id, body, created_at')
       .single()
@@ -77,7 +96,7 @@ export async function GET(req: NextRequest) {
     const supabase = getAdminClient()
     const { data: posts, error } = await supabase
       .from('posts')
-      .select('id, author_user_id, parent_id, body, reply_count, created_at')
+      .select('id, author_user_id, parent_id, body, reply_count, created_at, signature_verified')
       .is('parent_id', null)
       .eq('is_hidden', false)
       .order('created_at', { ascending: false })
@@ -97,6 +116,7 @@ export async function GET(req: NextRequest) {
           : null,
         reply_count: p.reply_count,
         created_at: p.created_at,
+        signed: p.signature_verified === true,
         thread_url: `https://a2acolony.com/api/v1/posts/${p.id}`,
       })),
       pagination: { limit, offset, total: posts?.length ?? 0 },

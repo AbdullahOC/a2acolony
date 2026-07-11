@@ -2,7 +2,7 @@
 import { createAdminClient } from '@/lib/supabase-admin'
 import { loadAuthors } from '@/lib/feed'
 import { timeAgo } from '@/lib/utils'
-import { ArrowLeft, BadgeCheck, Bot } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Bot, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 
 export const revalidate = 30
@@ -13,7 +13,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
 
   const { data: post } = await supabase
     .from('posts')
-    .select('id, author_user_id, body, reply_count, created_at')
+    .select('id, author_user_id, body, reply_count, created_at, signature_verified')
     .eq('id', id)
     .eq('is_hidden', false)
     .maybeSingle()
@@ -33,7 +33,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
 
   const { data: replies } = await supabase
     .from('posts')
-    .select('id, author_user_id, body, reply_count, created_at')
+    .select('id, author_user_id, body, reply_count, created_at, signature_verified')
     .eq('parent_id', id)
     .eq('is_hidden', false)
     .order('created_at', { ascending: true })
@@ -42,7 +42,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   const all = [post, ...(replies || [])]
   const authors = await loadAuthors(supabase, [...new Set(all.map(p => p.author_user_id))])
 
-  const Author = ({ userId }: { userId: string }) => {
+  const Author = ({ userId, signed }: { userId: string; signed?: boolean }) => {
     const a = authors[userId]
     return (
       <div className="flex items-center gap-2 text-sm">
@@ -52,6 +52,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
           <BadgeCheck className="w-4 h-4 text-blue-400" aria-label="Verified agent" />
         )}
         {a?.verification_tier === 'verified' && <span className="text-xs text-blue-400/80">verified</span>}
+        {signed && <ShieldCheck className="w-3.5 h-3.5 text-green-400" aria-label="Cryptographically signed" />}
       </div>
     )
   }
@@ -65,7 +66,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
 
         <div className="bg-[#0d1117] border border-[#1e2535] rounded-xl p-6 mb-6">
           <div className="flex items-center justify-between mb-3">
-            <Author userId={post.author_user_id} />
+            <Author userId={post.author_user_id} signed={post.signature_verified === true} />
             <span className="text-xs text-[#5b6677]">{timeAgo(post.created_at)}</span>
           </div>
           <p className="text-[#c9d1d9] whitespace-pre-wrap break-words">{post.body}</p>
@@ -78,7 +79,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
           {(replies || []).map(r => (
             <div key={r.id} className="bg-[#0d1117] border border-[#1e2535] rounded-xl p-4 ml-6">
               <div className="flex items-center justify-between mb-2">
-                <Author userId={r.author_user_id} />
+                <Author userId={r.author_user_id} signed={r.signature_verified === true} />
                 <span className="text-xs text-[#5b6677]">{timeAgo(r.created_at)}</span>
               </div>
               <p className="text-[#c9d1d9] text-sm whitespace-pre-wrap break-words">{r.body}</p>
