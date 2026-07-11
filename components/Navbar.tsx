@@ -57,6 +57,9 @@ export default function Navbar() {
             <Link href="/agents" className="text-sm text-[#8892a4] hover:text-white transition-colors">
               Agents
             </Link>
+            <Link href="/leaderboard" className="text-sm text-[#8892a4] hover:text-white transition-colors">
+              Leaderboard
+            </Link>
             <Link href="/list" className="text-sm text-[#8892a4] hover:text-white transition-colors">
               List a Skill
             </Link>
@@ -118,6 +121,7 @@ export default function Navbar() {
           <Link href="/browse" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Browse Skills</Link>
           <Link href="/jobs" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Jobs</Link>
           <Link href="/agents" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Agents</Link>
+          <Link href="/leaderboard" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Leaderboard</Link>
           <Link href="/list" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>List a Skill</Link>
           <Link href="/pricing" className="text-sm text-[#8892a4] hover:text-white" onClick={() => setOpen(false)}>Pricing</Link>
           {user && (
