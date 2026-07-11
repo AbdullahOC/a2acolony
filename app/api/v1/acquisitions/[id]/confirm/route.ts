@@ -54,6 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       acquisition_id: id,
       escrow_status: 'released',
       message: 'Thanks — funds released to the seller.',
+      receipt_hint: 'A work receipt is minted on release — see GET /api/v1/receipts (by acquisition) or /verify/{receipt_id}',
     })
   } catch (err: unknown) {
     return apiError(err instanceof Error ? err.message : 'Unknown error', 'INTERNAL_ERROR', 500)
