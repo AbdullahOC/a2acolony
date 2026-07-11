@@ -1,6 +1,19 @@
 # A2A Colony — Session Handover
 
-_Last updated: 2026-07-07 (session b). Purpose: let a fresh session pick up cold._
+_Last updated: 2026-07-11 (session d). Purpose: let a fresh session pick up cold._
+
+## 0. Newest first — 2026-07-11 session d (feed v2, receipts, #19 finished)
+
+All merged to `main`, deploys green, migrations applied to prod, each verified by rolled-back exploit/round-trip tests. Built via supervised Sonnet subagents; every diff + migration lead-reviewed line by line and re-tested against prod before merge.
+
+- **PR #32 — Feed v2: Ed25519 signed posts + auto-post on earn** (migration `012`). `profiles.signing_public_key` (opt-in), `posts.signature_verified`. New `lib/ed25519.ts` (raw-key→SPKI wrap via node:crypto, throw-proof; independently re-verified against a real keypair). `PUT /api/v1/agents/signing-key` sets/rotates the key (rotation safe — verification is stored per-post at insert). Register accepts `signing_public_key`. `POST /api/v1/posts` + `publish_post` MCP accept optional `signature`, verified against the **trimmed** body; bad sig = 400, never stored. `/feed` shows a green ShieldCheck on signed posts. `release_skill_escrow` now auto-posts `Earned £X selling "…" #earned` from the seller (exception-wrapped — a posts failure can never block a payout).
+- **PR #33 — Proof-of-Work receipts + public verify** (migration `013`). `release_skill_escrow` mints a platform-attested `work_receipts` row on release (dedupe-guarded, exception-wrapped, ordered before the auto-post). `lib/receipts.ts` `receiptLeafHash` = sha256 hex, **proven byte-identical to the SQL `encode(sha256(...),'hex')`** against Postgres. `GET /api/v1/receipts/{id}` returns the canonical receipt + server-side hash recompute + signature status. `POST /api/v1/receipts/{id}/sign` lets the buyer/seller co-sign the leaf hash with their Ed25519 key (role-authz, dup=409, bad sig=400). Public `/verify/{id}` page shows integrity (hash match) + buyer/seller signature status. **PRD §6.5 dual-signed receipts now have a real path.**
+- **PR #34 — #19 phase 2: remaining write lockdown** (migration `014`). **#19 is now CLOSED.** Revoked insert/update/delete from anon+authenticated on 27 tables; dropped 12 permissive write policies. Two were **actively exploitable** (verified, rolled back): `agent_profiles` UPDATE (self-forge `reputation_score`/`verification_tier`/`is_verified`/`sale_price_gbp`) and `jobs` UPDATE (poster tampering `escrow_status`/`budget_minor`). `verify_receipt` EXECUTE revoked from anon/authenticated/public (redundant; **cleared its advisor WARN**). Skills INSERT (sole legit JWT write) left intact + verified still working. Post-migration advisors: only `get_my_profile` WARN (documented identity-safe false-positive) and the Pro-only leaked-password WARN remain.
+
+**Advisors now:** the persistent `rls_enabled_no_policy` INFOs are by-design (service-role-only tables). `get_my_profile` WARN is a documented false-positive. Leaked-password WARN is Pro-plan-only (see §5). **No actionable security findings.**
+
+**Test agent for the e2e purchase test:** `escrow-test-agent`, USDC deposit `0x5aB1c7c853116a48CaaC8D0ec8CA7768EB253760` (Base). Wallet still unfunded — the live money round-trip (§5) is the last owner-only validation.
+
 
 ## 1. Snapshot & how to operate
 
@@ -85,10 +98,11 @@ The read-side design below is still the eventual end-state (per-command policies
 
 ## 5. What's left, prioritized
 
-**Engineering:**
-1. **#19 remainder** (see §4 STATUS). The critical write-lockdown shipped (migration `010_lockdown_client_writes`); what's left is the lower-severity audit-and-lock pass over `jobs`/`reviews`/`agent_profiles` and the two SECURITY DEFINER WARN decisions. Not on fire.
-2. **Feed v2** (owner priority — "A2A means agent to agent", feed is a core feature, shipped v1 in PR #30 / migration `011_agent_feed`): capture agent Ed25519 pubkeys at registration → verify per-post signatures into the reserved `signature` column (PRD acceptance) → auto-post "earned" items on escrow release → follows (agent_profiles has the counter columns).
-3. **PRD not yet built:** Proof-of-Work receipts public verify surface (`work_receipts` + `verify_receipt` exist; needs the /verify page + co-signing flow), reputation & leaderboards (P1 — `reputation_score` exists, nothing computes it), transparency log/Merkle anchoring + DID/VC (P2 — later).
+**Engineering:** ~~#19~~, ~~Feed v2~~, ~~receipts~~ all DONE this session (see §0). Remaining PRD build:
+1. **Reputation & leaderboards** (P1) — `agent_profiles.reputation_score` + `work_receipts` (now minted on every release) exist; nothing computes a score yet. Build the server-side scorer off settled receipts + ratings + dispute rate, then leaderboard pages. Receipts give you the honest signal source the PRD wanted.
+2. **Follows** — `agent_profiles.follower_count`/`following_count` columns exist; the feed could gain a follow graph + "following" filter. Small.
+3. **Transparency log / Merkle anchoring + DID/VC** (P2) — nightly Merkle root over `work_receipts.leaf_hash` (already populated), platform-signed, later anchored to Base; then W3C DIDs/VCs. Later.
+4. **Reviews UI** — the `reviews` table lost its JWT insert policy in #19 phase 2 (it was unused/dead). If a review-writing UI is ever built, route it through a service-role server action like every other write (do NOT re-grant JWT writes).
 
 **Test agent (created 2026-07-11):** `escrow-test-agent` / mac50207+escrowtest@gmail.com, USDC deposit address `0x5aB1c7c853116a48CaaC8D0ec8CA7768EB253760` (Base, HD index 0). Wallet unfunded pending the e2e purchase test. It authored the first two feed posts.
 
