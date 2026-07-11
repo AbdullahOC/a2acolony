@@ -27,6 +27,7 @@ _Last updated: 2026-07-07 (session b). Purpose: let a fresh session pick up cold
 - **PR #24** `aa4b441` — **#15 verification tiers** (migration `008`). `profiles.verification_tier`: `registered` (default, instant signup) → `verified` (self-serve via **`POST /api/v1/agents/verify`**: funded wallet/payout details on file + endpoint answers an SSRF-guarded health probe, rate-limited 10/h) → `founding` (manual: the admin is_verified toggle now syncs the tier; only founding shows the badge). Tier surfaced as `seller_verification_tier` in `browse_skills`/`get_skill` (MCP), `GET /api/v1/skills(/[id])` (REST), and a seller line on the skill page.
 - **PR #25** `ff66a3c` — **#18 escrow with disputes** (migration `009`). See §3 for the full machine.
 - **PR #26** `6facae6` — **#17 residuals closed.** `toPence`/`fromPence` in `lib/api-helpers.ts`; cashout + jobs/award now integer-pence; check_balance drops parseFloat. Leftover Math.round-guarded float spots (jobs/complete settlement, crypto-scan credit) ride with #19, which turns those into SQL anyway.
+- **PR #30** `57ecef5` (2026-07-11) — **agent-to-agent feed** (PRD §6.7, migration `010`). The owner ranks this a core feature ("A2A means agent to agent"). `posts` table (parent_id threading, 2000-char check, `is_hidden` moderation, reserved `signature` column), trigger keeps `reply_count`/`agent_profiles.post_count` exact in SQL. REST: `POST/GET /api/v1/posts`, `GET /api/v1/posts/{id}` (thread). MCP: `publish_post` + `browse_feed`. Web: `/feed` + `/feed/{id}` + nav link. Smoke-tested live (first post + threaded reply exist, by escrow-test-agent). **Deferred deliberately:** per-post Ed25519 signatures (PRD acceptance) — registration doesn't capture agent pubkeys yet; when it does, verify into the reserved `signature` column, badge signed posts, and auto-post "earned" items on escrow release.
 - Also in #25: **latent bug fix** — `jobs/[id]/complete` inserted `transactions.status='completed'`, which `transactions_status_check` rejects (`pending|paid_out|refunded|disputed`), so every **jobs** settlement row had been silently dropped (same class as the skills bug PR #20 fixed). Now `'pending'`.
 
 **GitHub issues:** #14–#18 CLOSED. Open: **#19 only** (RLS design in §4).
@@ -84,7 +85,14 @@ The read-side design below is still the eventual end-state (per-command policies
 
 ## 5. What's left, prioritized
 
-**Engineering:** **#19 remainder** only (see §4 STATUS). The critical write-lockdown shipped (migration 010); what's left is the lower-severity audit-and-lock pass over `jobs`/`reviews`/`agent_profiles` and the two SECURITY DEFINER WARN decisions. Not on fire.
+**Engineering:**
+1. **#19 remainder** (see §4 STATUS). The critical write-lockdown shipped (migration `010_lockdown_client_writes`); what's left is the lower-severity audit-and-lock pass over `jobs`/`reviews`/`agent_profiles` and the two SECURITY DEFINER WARN decisions. Not on fire.
+2. **Feed v2** (owner priority — "A2A means agent to agent", feed is a core feature, shipped v1 in PR #30 / migration `011_agent_feed`): capture agent Ed25519 pubkeys at registration → verify per-post signatures into the reserved `signature` column (PRD acceptance) → auto-post "earned" items on escrow release → follows (agent_profiles has the counter columns).
+3. **PRD not yet built:** Proof-of-Work receipts public verify surface (`work_receipts` + `verify_receipt` exist; needs the /verify page + co-signing flow), reputation & leaderboards (P1 — `reputation_score` exists, nothing computes it), transparency log/Merkle anchoring + DID/VC (P2 — later).
+
+**Test agent (created 2026-07-11):** `escrow-test-agent` / mac50207+escrowtest@gmail.com, USDC deposit address `0x5aB1c7c853116a48CaaC8D0ec8CA7768EB253760` (Base, HD index 0). Wallet unfunded pending the e2e purchase test. It authored the first two feed posts.
+
+**NOTE — parallel sessions:** PRs #29 (#19 lockdown) and #30 (feed) landed from concurrent sessions and both used migration number 010 (`010_lockdown_client_writes` / feed renamed to `011_agent_feed`). Before starting work, always `git pull` and check `gh pr list` for another live session.
 
 **Owner-only actions (can't be done from a session):**
 - ~~Leaked-password protection~~ — **not actionable**: it's a Supabase Pro-plan feature and the project is on the free plan (owner tried 2026-07-07, dashboard rejects it). The advisor WARN is permanent until a plan upgrade; ignore it, and don't re-flag it to the owner. Low value here anyway — agents get 32-char random passwords.
