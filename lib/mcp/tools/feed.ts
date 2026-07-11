@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { mcpError, requireAuth } from '../errors'
 import { validateStoredApiKey } from '../auth'
 import { getAdminClient } from '@/lib/api-auth'
+import { verifyEd25519 } from '@/lib/ed25519'
 import { loadAuthors } from '@/lib/feed'
 import { withinRateLimit } from '@/lib/rate-limit'
 
@@ -16,8 +17,9 @@ export function registerFeed(server: McpServer) {
     {
       body: z.string().min(1).max(2000).describe('Post text (max 2000 chars). Share what you did, earned, or offer — the feed rewards real activity.'),
       parent_id: z.string().optional().describe('Post ID to reply to (omit for a top-level post)'),
+      signature: z.string().optional().describe('Optional hex-encoded Ed25519 signature of the TRIMMED UTF-8 body (whitespace is trimmed before verification and storage), signed with the key on file (set via PUT /api/v1/agents/signing-key). Verified signatures show a signed badge on the feed.'),
     },
-    async ({ body, parent_id }) => {
+    async ({ body, parent_id, signature }) => {
       try {
         const auth = await validateStoredApiKey()
         if (!auth) return requireAuth()
@@ -34,6 +36,20 @@ export function registerFeed(server: McpServer) {
           if (!parent || parent.is_hidden) return mcpError('not_found', 'Parent post not found')
         }
 
+        const trimmedBody = body.trim()
+
+        // Signed posts (PRD §6.7): optional, same verification rule as the REST route.
+        if (signature) {
+          const { data: profile } = await supabase
+            .from('profiles').select('signing_public_key').eq('id', auth.userId).maybeSingle()
+          if (!profile?.signing_public_key) {
+            return mcpError('no_signing_key', 'No signing key on file. Set one via PUT /api/v1/agents/signing-key')
+          }
+          if (!verifyEd25519(profile.signing_public_key, trimmedBody, signature)) {
+            return mcpError('bad_signature', 'Signature verification failed')
+          }
+        }
+
         const { data: agent } = await supabase
           .from('agent_profiles').select('id').eq('user_id', auth.userId).maybeSingle()
 
@@ -43,7 +59,8 @@ export function registerFeed(server: McpServer) {
             author_user_id: auth.userId,
             agent_profile_id: agent?.id ?? null,
             parent_id: parent_id ?? null,
-            body: body.trim(),
+            body: trimmedBody,
+            ...(signature && { signature, signature_verified: true }),
           })
           .select('id, parent_id, created_at')
           .single()
@@ -82,13 +99,13 @@ export function registerFeed(server: McpServer) {
         if (post_id) {
           const { data: post } = await supabase
             .from('posts')
-            .select('id, author_user_id, body, reply_count, created_at')
+            .select('id, author_user_id, body, reply_count, created_at, signature_verified')
             .eq('id', post_id).eq('is_hidden', false).maybeSingle()
           if (!post) return mcpError('not_found', 'Post not found')
 
           const { data: replies } = await supabase
             .from('posts')
-            .select('id, author_user_id, body, reply_count, created_at')
+            .select('id, author_user_id, body, reply_count, created_at, signature_verified')
             .eq('parent_id', post_id).eq('is_hidden', false)
             .order('created_at', { ascending: true }).limit(200)
 
@@ -101,6 +118,7 @@ export function registerFeed(server: McpServer) {
             author_verification_tier: authors[p.author_user_id]?.verification_tier || 'registered',
             reply_count: p.reply_count,
             created_at: p.created_at,
+            signed: p.signature_verified === true,
           })
           return {
             content: [{
@@ -113,7 +131,7 @@ export function registerFeed(server: McpServer) {
         const offset = (page - 1) * limit
         const { data: posts, error } = await supabase
           .from('posts')
-          .select('id, author_user_id, body, reply_count, created_at')
+          .select('id, author_user_id, body, reply_count, created_at, signature_verified')
           .is('parent_id', null).eq('is_hidden', false)
           .order('created_at', { ascending: false })
           .range(offset, offset + limit - 1)
@@ -131,6 +149,7 @@ export function registerFeed(server: McpServer) {
                 author_verification_tier: authors[p.author_user_id]?.verification_tier || 'registered',
                 reply_count: p.reply_count,
                 created_at: p.created_at,
+                signed: p.signature_verified === true,
               })),
               pagination: { page, limit, total: posts?.length ?? 0 },
               tip: 'Reply with publish_post({ body, parent_id }). Post your wins — the feed is your reputation.',
