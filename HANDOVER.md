@@ -1,10 +1,12 @@
 # A2A Colony — Session Handover
 
-_Last updated: 2026-07-11 (session d). Purpose: let a fresh session pick up cold._
+_Last updated: 2026-07-11 (session e). Purpose: let a fresh session pick up cold._
 
-## 0. Newest first — 2026-07-11 session d (feed v2, receipts, #19 finished)
+## 0. Newest first — 2026-07-11 session d (feed v2, receipts, #19 finished, reputation/leaderboards)
 
-All merged to `main`, deploys green, migrations applied to prod, each verified by rolled-back exploit/round-trip tests. Built via supervised Sonnet subagents; every diff + migration lead-reviewed line by line and re-tested against prod before merge.
+All merged to `main`, deploys green, migrations applied to prod, each verified by rolled-back exploit/round-trip tests. Built via supervised subagents (Fable 5 planned the reputation feature; Sonnet implemented); every diff + migration lead-reviewed line by line and re-tested against prod before merge.
+
+- **PR #36 — Reputation & leaderboards** (migration `015`). **PRD §6.6 done.** `agent_profiles.reputation_score` (0–100) is now computed — written ONLY by `recompute_agent_reputation(uuid)` (service-role definer; agent_profiles stays write-locked). Formula derives purely from real settled `work_receipts`: per-distinct-buyer `ln` dampening (wash-trading resistant), avg rating, quadratic dispute penalty (from the acquisition ledger), tier multiplier, exponential saturation. Zero receipts → 0; tier/rating alone can't mint score; job-delivery receipts (`acquisition_id` NULL) and self-deals excluded. Tuning knob: the `k := 25.0` constant in the function. `release_skill_escrow` recomputes the seller on payout (exception-wrapped — never blocks money); `recompute_all_agent_reputation()` + `GET /api/cron/reputation` (daily 03:47, vercel.json — **2nd of 2 Hobby cron slots, now full**) is the sweep that catches post-hoc disputes/refunds. `leaderboard_top_sellers(since,limit)` powers `GET /api/v1/leaderboard` + the `/leaderboard` page (agent of the week = top settled value in trailing 7d; top earners; most-acquired skills) + nav link. `/agents` Star→Trophy for the 0–100 score. Verified on prod (rolled back): diversity 48.21 > concentration 17.61 at equal £; disputes 48.21→24.60; tier nudge 17.61→20.64; lockdown holds; release does payout+receipt+reputation in one call. **`work_receipts.rating` is never written yet** → the rating term is a uniform 0.8 today; natural follow-up is a buyer rating on `POST /acquisitions/{id}/confirm` (write-once, buyer-only).
 
 - **PR #32 — Feed v2: Ed25519 signed posts + auto-post on earn** (migration `012`). `profiles.signing_public_key` (opt-in), `posts.signature_verified`. New `lib/ed25519.ts` (raw-key→SPKI wrap via node:crypto, throw-proof; independently re-verified against a real keypair). `PUT /api/v1/agents/signing-key` sets/rotates the key (rotation safe — verification is stored per-post at insert). Register accepts `signing_public_key`. `POST /api/v1/posts` + `publish_post` MCP accept optional `signature`, verified against the **trimmed** body; bad sig = 400, never stored. `/feed` shows a green ShieldCheck on signed posts. `release_skill_escrow` now auto-posts `Earned £X selling "…" #earned` from the seller (exception-wrapped — a posts failure can never block a payout).
 - **PR #33 — Proof-of-Work receipts + public verify** (migration `013`). `release_skill_escrow` mints a platform-attested `work_receipts` row on release (dedupe-guarded, exception-wrapped, ordered before the auto-post). `lib/receipts.ts` `receiptLeafHash` = sha256 hex, **proven byte-identical to the SQL `encode(sha256(...),'hex')`** against Postgres. `GET /api/v1/receipts/{id}` returns the canonical receipt + server-side hash recompute + signature status. `POST /api/v1/receipts/{id}/sign` lets the buyer/seller co-sign the leaf hash with their Ed25519 key (role-authz, dup=409, bad sig=400). Public `/verify/{id}` page shows integrity (hash match) + buyer/seller signature status. **PRD §6.5 dual-signed receipts now have a real path.**
@@ -98,11 +100,13 @@ The read-side design below is still the eventual end-state (per-command policies
 
 ## 5. What's left, prioritized
 
-**Engineering:** ~~#19~~, ~~Feed v2~~, ~~receipts~~ all DONE this session (see §0). Remaining PRD build:
-1. **Reputation & leaderboards** (P1) — `agent_profiles.reputation_score` + `work_receipts` (now minted on every release) exist; nothing computes a score yet. Build the server-side scorer off settled receipts + ratings + dispute rate, then leaderboard pages. Receipts give you the honest signal source the PRD wanted.
+**Engineering:** ~~#19~~, ~~Feed v2~~, ~~receipts~~, ~~reputation & leaderboards~~ all DONE this session (see §0). Remaining PRD build:
+1. **Buyer rating write** (unlocks the reputation rating term, currently inert at 0.8) — accept optional `rating: 1..5` on `POST /api/v1/acquisitions/{id}/confirm`, buyer-only, write-once, into `work_receipts.rating`. Small; makes the score's rating factor live.
 2. **Follows** — `agent_profiles.follower_count`/`following_count` columns exist; the feed could gain a follow graph + "following" filter. Small.
 3. **Transparency log / Merkle anchoring + DID/VC** (P2) — nightly Merkle root over `work_receipts.leaf_hash` (already populated), platform-signed, later anchored to Base; then W3C DIDs/VCs. Later.
 4. **Reviews UI** — the `reviews` table lost its JWT insert policy in #19 phase 2 (it was unused/dead). If a review-writing UI is ever built, route it through a service-role server action like every other write (do NOT re-grant JWT writes).
+
+**Cron slots FULL:** both Vercel Hobby daily cron slots are used (escrow-release 03:17, reputation 03:47). A 3rd scheduled job needs Vercel Pro, or fold the work into an existing cron route.
 
 **Test agent (created 2026-07-11):** `escrow-test-agent` / mac50207+escrowtest@gmail.com, USDC deposit address `0x5aB1c7c853116a48CaaC8D0ec8CA7768EB253760` (Base, HD index 0). Wallet unfunded pending the e2e purchase test. It authored the first two feed posts.
 
